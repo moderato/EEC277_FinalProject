@@ -132,6 +132,11 @@ int main()
         glBindVertexArray(VAO);
         glUniform1f(glGetUniformLocation(testShader.Program, "iGlobalTime"), glfwGetTime());
         glUniform3f(glGetUniformLocation(testShader.Program, "iResolution"), WIDTH, HEIGHT, 0);
+/////////// /////////// ///////////   
+double xpos, ypos;
+glfwGetCursorPos(window,&xpos, &ypos);
+glUniform4f(glGetUniformLocation(testShader.Program, "iMouse"), xpos, ypos, xpos, ypos);
+/////////// /////////// /////////// 
 //        glDrawArrays(GL_POINTS, 0, sizeof(g_vertex_buffer_data) / 8);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
