@@ -2,22 +2,18 @@
 #include <cmath>
 #include <string>
 
-// GLEW
 #define GLEW_STATIC
 #include <GL/glew.h>
-
-// GLFW
 #include <GLFW/glfw3.h>
 
-// GLM Mathematics
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-// Other includes
 #include "shader.h"
 #include "camera.h"
 
+// Correctly set resolution for Macbook Retina
 #ifdef __APPLE__
 #define MUL 2
 #else
@@ -114,16 +110,18 @@ int main(int argc, char const *argv[])
     int num_spheres = 3;
     if(argc > 1)
         num_spheres = atoi(argv[1]);
-//    num_spheres = 64;
+    num_spheres = 25;
     if(num_spheres > MAX_SPHERE_NUM) {
         fprintf(stderr, "Too many spheres!\n");
         exit(EXIT_FAILURE);
     }
     
     for(int i = 0; i < num_spheres; i++) {
-        sp_pos[i] = glm::vec3(-3.0f + 1.5f * (i % 5), 0.5f + 1.5f * ((i % 25) / 5), 0.0f + 1.5f * (i / 25));
-        std::cout << sp_pos[i].x << ", " << sp_pos[i].y << ", " << sp_pos[i].z << std::endl;
+        sp_pos[i] = glm::vec3(-3.0f + 1.5f * (i % 5), 0.5f + 1.5f * (i / 25), 0.0f + 1.5f * ((i % 25) / 5));
     }
+    
+    int frames = 0;
+    float start = glfwGetTime();
     
     while (!glfwWindowShouldClose(window))
     {
@@ -149,6 +147,10 @@ int main(int argc, char const *argv[])
         
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
+        
+        frames++;
+        float fps = frames * 1.0f / (glfwGetTime() - start);
+        std::cout << fps << " frames per second" << std::endl;
 
         // Swap the screen buffers
         glfwSwapBuffers(window);

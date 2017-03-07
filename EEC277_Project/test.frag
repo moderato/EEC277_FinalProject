@@ -39,7 +39,6 @@ uniform vec3      iResolution;           // viewport resolution (in pixels)
 uniform float     iGlobalTime;           // shader playback time (in seconds)
 out vec4 color;
 
-
 const float epsilon = 1e-3;
 const int iterations = 6;
 const float exposure = 1e-2;
