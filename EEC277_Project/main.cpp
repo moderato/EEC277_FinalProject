@@ -29,18 +29,15 @@ void do_movement();
 // Window dimensions
 const GLuint WIDTH = 800, HEIGHT = 600;
 
-//// Camera
-//Camera  camera(glm::vec3(0.0f, 0.0f, 3.0f));
-//GLfloat lastX  =  WIDTH  / 2.0;
-//GLfloat lastY  =  HEIGHT / 2.0;
+// Camera
+Camera  camera(glm::vec3(0.0f, 2.5f, 12.0f));
+GLfloat lastX  =  WIDTH;
+GLfloat lastY  =  HEIGHT;
 bool keys[1024];
-//
-//// Light attributes
-//glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
-//
-//// Deltatime
-//GLfloat deltaTime = 0.0f;   // Time between current frame and last frame
-//GLfloat lastFrame = 0.0f;   // Time of last frame
+
+// Deltatime
+GLfloat deltaTime = 0.0f;   // Time between current frame and last frame
+GLfloat lastFrame = 0.0f;   // Time of last frame
 
 // Spheres
 const int MAX_SPHERE_NUM = 125;
@@ -69,11 +66,11 @@ int main(int argc, char const *argv[])
     
 //    // Set the required callback functions
     glfwSetKeyCallback(window, key_callback);
-//    glfwSetCursorPosCallback(window, mouse_callback);
-//    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
     
     // GLFW Options
-//    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     
     // Set this to true so GLEW knows to use a modern approach to retrieving function pointers and extensions
     glewExperimental = GL_TRUE;
@@ -102,7 +99,7 @@ int main(int argc, char const *argv[])
     glViewport(0, 0, 2 * WIDTH, 2 * HEIGHT);
     
     // OpenGL options
-//    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_TEST);
     
     // Build and compile our shader program
     Shader testShader("/Users/moderato/Desktop/EEC277/EEC277_Project/EEC277_Project/test.vs", "/Users/moderato/Desktop/EEC277/EEC277_Project/EEC277_Project/test.frag");
@@ -125,22 +122,33 @@ int main(int argc, char const *argv[])
     
     while (!glfwWindowShouldClose(window))
     {
-        glfwPollEvents();
+        GLfloat currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+        
         // Clear the colorbuffer
         glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         testShader.Use();
         glBindVertexArray(VAO);
+        
+        // Create camera transformations
+        glm::mat4 view;
+        view = camera.GetViewMatrix();
+        glm::mat4 projection = glm::perspective(camera.Zoom, (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
+        glUniformMatrix4fv(glGetUniformLocation(testShader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+        glUniformMatrix4fv(glGetUniformLocation(testShader.Program, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniform1f(glGetUniformLocation(testShader.Program, "iGlobalTime"), glfwGetTime());
         glUniform3f(glGetUniformLocation(testShader.Program, "iResolution"), WIDTH * MUL, HEIGHT * MUL, 0);
         glUniform1i(glGetUniformLocation(testShader.Program, "num_spheres"), num_spheres);
+        glUniform3f(glGetUniformLocation(testShader.Program, "viewPos"), camera.Position.x, camera.Position.y, camera.Position.z);
         
         for(int i = 0; i < num_spheres; i++) {
             std::string sphere = "spheres[" + std::to_string(i) + "]";
             glUniform1f(glGetUniformLocation(testShader.Program, (sphere + ".radius").c_str()), 0.5f);
             glUniform3f(glGetUniformLocation(testShader.Program, (sphere + ".position").c_str()), sp_pos[i].x, sp_pos[i].y, sp_pos[i].z);
-            glUniform3f(glGetUniformLocation(testShader.Program, (sphere + ".material.color").c_str()), 0.2f, 0.3 + 0.005f * i, 0.8f);
+            glUniform3f(glGetUniformLocation(testShader.Program, (sphere + ".material.color").c_str()), 0.2f, 0.3, 0.8f);
             glUniform1f(glGetUniformLocation(testShader.Program, (sphere + ".material.diffuse").c_str()), 1.0f);
             glUniform1f(glGetUniformLocation(testShader.Program, (sphere + ".material.specular").c_str()), 0.5f);
         }
@@ -150,8 +158,11 @@ int main(int argc, char const *argv[])
         
         frames++;
         float fps = frames * 1.0f / (glfwGetTime() - start);
-        std::cout << fps << " frames per second" << std::endl;
+//        std::cout << fps << " frames per second" << std::endl;
 
+        glfwPollEvents();
+        do_movement();
+        
         // Swap the screen buffers
         glfwSwapBuffers(window);
     }
@@ -174,40 +185,41 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         keys[key] = false;
     }
 }
-//
-//void do_movement()
-//{
-//    // Camera controls
-//    if (keys[GLFW_KEY_W])
-//    camera.ProcessKeyboard(FORWARD, deltaTime);
-//    if (keys[GLFW_KEY_S])
-//    camera.ProcessKeyboard(BACKWARD, deltaTime);
-//    if (keys[GLFW_KEY_A])
-//    camera.ProcessKeyboard(LEFT, deltaTime);
-//    if (keys[GLFW_KEY_D])
-//    camera.ProcessKeyboard(RIGHT, deltaTime);
-//}
-//
-//bool firstMouse = true;
-//void mouse_callback(GLFWwindow* window, double xpos, double ypos)
-//{
-//    if (firstMouse)
-//    {
-//        lastX = xpos;
-//        lastY = ypos;
-//        firstMouse = false;
-//    }
-//    
-//    GLfloat xoffset = xpos - lastX;
-//    GLfloat yoffset = lastY - ypos;  // Reversed since y-coordinates go from bottom to left
-//    
-//    lastX = xpos;
-//    lastY = ypos;
-//    
-//    camera.ProcessMouseMovement(xoffset, yoffset);
-//}
-//
-//void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-//{
-//    camera.ProcessMouseScroll(yoffset);
-//}
+
+void do_movement()
+{
+    // Camera controls
+    if (keys[GLFW_KEY_W])
+        camera.ProcessKeyboard(FORWARD, deltaTime);
+    if (keys[GLFW_KEY_S])
+        camera.ProcessKeyboard(BACKWARD, deltaTime);
+    if (keys[GLFW_KEY_A])
+        camera.ProcessKeyboard(LEFT, deltaTime);
+    if (keys[GLFW_KEY_D])
+        camera.ProcessKeyboard(RIGHT, deltaTime);
+//    std::cout << camera.Position.x << " " << camera.Position.y << " " << camera.Position.z << std::endl;
+}
+
+bool firstMouse = true;
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    if (firstMouse)
+    {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+    
+    GLfloat xoffset = xpos - lastX;
+    GLfloat yoffset = lastY - ypos;  // Reversed since y-coordinates go from bottom to left
+    
+    lastX = xpos;
+    lastY = ypos;
+    
+    camera.ProcessMouseMovement(xoffset, yoffset);
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    camera.ProcessMouseScroll(yoffset);
+}

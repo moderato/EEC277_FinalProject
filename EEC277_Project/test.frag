@@ -37,6 +37,8 @@ uniform int       num_spheres;
 uniform Sphere spheres[200];
 uniform vec3      iResolution;           // viewport resolution (in pixels)
 uniform float     iGlobalTime;           // shader playback time (in seconds)
+uniform vec3      viewPos;
+
 out vec4 color;
 
 const float epsilon = 1e-3;
@@ -103,7 +105,8 @@ vec3 radiance(Ray ray) {
         } else {
             
             vec3 spotlight = vec3(1e6) * pow(abs(dot(ray.direction, light.direction)), 250.0);
-            color += mask * (ambient + spotlight); break;
+            color += mask * (ambient + spotlight);
+            break;
         }
     }
     return color;
@@ -112,7 +115,7 @@ vec3 radiance(Ray ray) {
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 uv    = fragCoord.xy / iResolution.xy - vec2(0.5);
     uv.x *= iResolution.x / iResolution.y;
-    Ray ray = Ray(vec3(0.0, 2.5, 12.0), normalize(vec3(uv.x, uv.y, -1.0)));
+    Ray ray = Ray(viewPos, normalize(vec3(uv.x, uv.y, -1.0)));
     fragColor = vec4(pow(radiance(ray) * exposure, vec3(1.0 / gamma)), 1.0);
 }
 
