@@ -9,6 +9,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 #include "shader.h"
 #include "camera.h"
@@ -30,7 +31,7 @@ void do_movement();
 const GLuint WIDTH = 800, HEIGHT = 600;
 
 // Camera
-Camera  camera(glm::vec3(0.0f, 2.5f, 12.0f));
+Camera  camera(glm::vec3(0.0f, 4.0f, 20.0f));
 GLfloat lastX  =  WIDTH;
 GLfloat lastY  =  HEIGHT;
 bool keys[1024];
@@ -40,7 +41,7 @@ GLfloat deltaTime = 0.0f;   // Time between current frame and last frame
 GLfloat lastFrame = 0.0f;   // Time of last frame
 
 // Spheres
-const int MAX_SPHERE_NUM = 125;
+const int MAX_SPHERE_NUM = 225;
 glm::vec3 sp_pos[MAX_SPHERE_NUM];
 
 // The MAIN function, from here we start the application and run the game loop
@@ -64,7 +65,7 @@ int main(int argc, char const *argv[])
     }
     glfwMakeContextCurrent(window);
     
-//    // Set the required callback functions
+    // Set the required callback functions
     glfwSetKeyCallback(window, key_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
@@ -95,7 +96,7 @@ int main(int argc, char const *argv[])
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
     
-//     Define the viewport dimensions
+    // Define the viewport dimensions
     glViewport(0, 0, 2 * WIDTH, 2 * HEIGHT);
     
     // OpenGL options
@@ -107,11 +108,11 @@ int main(int argc, char const *argv[])
     int num_spheres = 3;
     if(argc > 1)
         num_spheres = atoi(argv[1]);
-    num_spheres = 25;
-    if(num_spheres > MAX_SPHERE_NUM) {
-        fprintf(stderr, "Too many spheres!\n");
-        exit(EXIT_FAILURE);
-    }
+    num_spheres = 225;
+//    if(num_spheres > MAX_SPHERE_NUM) {
+//        fprintf(stderr, "Too many spheres!\n");
+//        exit(EXIT_FAILURE);
+//    }
     
     for(int i = 0; i < num_spheres; i++) {
         sp_pos[i] = glm::vec3(-3.0f + 1.5f * (i % 5), 0.5f + 1.5f * (i / 25), 0.0f + 1.5f * ((i % 25) / 5));
@@ -122,9 +123,9 @@ int main(int argc, char const *argv[])
     
     while (!glfwWindowShouldClose(window))
     {
-        GLfloat currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
+        GLfloat current = glfwGetTime();
+        deltaTime = current - lastFrame;
+        lastFrame = current;
         
         // Clear the colorbuffer
         glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
@@ -139,10 +140,13 @@ int main(int argc, char const *argv[])
         glm::mat4 projection = glm::perspective(camera.Zoom, (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
         glUniformMatrix4fv(glGetUniformLocation(testShader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(glGetUniformLocation(testShader.Program, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        
         glUniform1f(glGetUniformLocation(testShader.Program, "iGlobalTime"), glfwGetTime());
         glUniform3f(glGetUniformLocation(testShader.Program, "iResolution"), WIDTH * MUL, HEIGHT * MUL, 0);
         glUniform1i(glGetUniformLocation(testShader.Program, "num_spheres"), num_spheres);
+        glUniform1i(glGetUniformLocation(testShader.Program, "iterations"), 6);
         glUniform3f(glGetUniformLocation(testShader.Program, "viewPos"), camera.Position.x, camera.Position.y, camera.Position.z);
+        glUniform3f(glGetUniformLocation(testShader.Program, "light_direction"), -1.0 + 4.0 * cos(current), 1.5f, 1.0 + 4.0 * sin(current));
         
         for(int i = 0; i < num_spheres; i++) {
             std::string sphere = "spheres[" + std::to_string(i) + "]";
@@ -157,8 +161,8 @@ int main(int argc, char const *argv[])
         glBindVertexArray(0);
         
         frames++;
-        float fps = frames * 1.0f / (glfwGetTime() - start);
-//        std::cout << fps << " frames per second" << std::endl;
+        float fps = frames * 1.0f / (current - start);
+        std::cout << fps << " frames per second" << std::endl;
 
         glfwPollEvents();
         do_movement();
@@ -172,7 +176,7 @@ int main(int argc, char const *argv[])
     return 0;
 }
 
-//// Is called whenever a key is pressed/released via GLFW
+// Is called whenever a key is pressed/released via GLFW
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
@@ -197,7 +201,6 @@ void do_movement()
         camera.ProcessKeyboard(LEFT, deltaTime);
     if (keys[GLFW_KEY_D])
         camera.ProcessKeyboard(RIGHT, deltaTime);
-//    std::cout << camera.Position.x << " " << camera.Position.y << " " << camera.Position.z << std::endl;
 }
 
 bool firstMouse = true;
