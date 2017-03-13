@@ -137,6 +137,9 @@ int main(int argc, char const *argv[])
     glBindTexture(GL_TEXTURE_2D, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, data, 0);
     
+    GLenum DrawBuffers[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+    glDrawBuffers(2, DrawBuffers);
+    
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -224,15 +227,14 @@ int main(int argc, char const *argv[])
         glBindVertexArray(0);
         
         glBindTexture(GL_TEXTURE_2D, data);
-        glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_UNSIGNED_INT, rayRateArray);
+        glGetTexImage(GL_TEXTURE_2D, 0, GL_BLUE, GL_FLOAT, rayRateArray);
         glBindTexture(GL_TEXTURE_2D, 0);
         
-        int sum = 0;
+        float sum = 0;
         for(int i = 0; i < WIDTH * HEIGHT * MUL * MUL; i++) {
             sum += rayRateArray[i];
         }
-        
-        std::cout << sum << " ray calculations per frame"<< std::endl;
+        std::cout << int(sum * 255) << " ray calculations per frame"<< std::endl;
         
         frames++;
         float fps = frames * 1.0f / (current - start);

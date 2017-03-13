@@ -42,7 +42,7 @@ uniform mat4      projection;            // Projection Matrix
 uniform mat4      view;                  // View Matrix
 
 layout(location = 0) out vec4 color;
-layout(location = 1) out uint totalRay;
+layout(location = 1) out vec4 totalRay;
 
 const float epsilon = 1e-3;
 const float exposure = 1e-2;
@@ -53,7 +53,7 @@ const float MAX_LEN = 2147483647.0;
 const Intersect miss = Intersect(MAX_LEN, vec3(0.0), Material(vec3(0.0), vec2(0.0, 0.0)));
 //Light light = Light(vec3(1.0, 1.0, 1.0) * intensity, normalize(vec3(0.0, 1.0, -3.0))); // Fixed light
 Light light = Light(vec3(1.0, 1.0, 1.0) * intensity, normalize(light_direction)); // Moving light
-uint rayCount = 0;
+float rayCount = 0;
 
 
 Intersect intersect(Ray ray, Sphere sphere) {
@@ -116,7 +116,7 @@ vec3 radiance(Ray ray) {
             
             vec3 reflection = reflect(ray.direction, hit.normal);
             ray = Ray(ray.origin + hit.len * ray.direction + epsilon * reflection, reflection);
-            rayCount += 1;
+            rayCount = rayCount + 1.0f;
             
             
         } else {
@@ -130,14 +130,14 @@ vec3 radiance(Ray ray) {
     return color;
 }
 
-void mainImage(out vec4 fragColor, out uint count, in vec2 fragCoord) {
+void mainImage(out vec4 fragColor, out vec4 count, in vec2 fragCoord) {
     vec2 uv = fragCoord.xy / resolution.xy - vec2(0.5);
     uv.x *= resolution.x / resolution.y;
 //    Ray ray = Ray(viewPos, normalize(mat3(projection * view) * vec3(uv.x, uv.y, 1.0f)));
     Ray ray = Ray(viewPos, normalize(vec3(uv.x, uv.y, -1.0f)));
     
-    fragColor = vec4(pow(radiance(ray) * exposure, vec3(1.0 / gamma)), 1.0);
-    count = rayCount;
+    fragColor = vec4(pow(radiance(ray) * exposure, vec3(1.0f / gamma)), 1.0f);
+    count = vec4(vec3(0.0, 0.0, rayCount / 255.0f), 1.0f);
 }
 
 
