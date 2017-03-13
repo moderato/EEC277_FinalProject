@@ -12,8 +12,7 @@ struct Light {
 
 struct Material {
     vec3 color;
-    float diffuse;
-    float specular;
+    vec2 diff_spec;
 };
 
 struct Intersect {
@@ -23,8 +22,7 @@ struct Intersect {
 };
 
 struct Sphere {
-    float radius;
-    vec3 position;
+    vec4 position_r;
     Material material;
 };
 
@@ -34,16 +32,17 @@ struct Plane {
 };
 
 uniform int       num_spheres;           // Sphere number
-uniform Sphere    spheres[280];          // Sphere Array
-uniform vec3      iResolution;           // Viewport resolution (in pixels)
+uniform Sphere    spheres[325];          // Sphere Array
+uniform vec3      resolution;            // Viewport resolution (in pixels)
 uniform vec3      viewPos;               // View Position
 uniform vec3      light_direction;       // Light direction for static/moving light
-uniform int       iterations;             // Bouncing limit
+uniform int       iterations;            // Bouncing limit
 
 uniform mat4      projection;            // Projection Matrix
 uniform mat4      view;                  // View Matrix
 
-out vec4 color;
+layout(location = 0) out vec4 color;
+layout(location = 1) out uint totalRay;
 
 const float epsilon = 1e-3;
 const float exposure = 1e-2;
@@ -51,20 +50,22 @@ const float gamma = 2.2;
 const float intensity = 100.0;
 const vec3 ambient = vec3(0.6, 0.8, 1.0) * intensity / gamma;
 const float MAX_LEN = 2147483647.0;
-const Intersect miss = Intersect(MAX_LEN, vec3(0.0), Material(vec3(0.0), 0.0, 0.0));
-//Light light = Light(vec3(1.0, 1.0, 1.0) * intensity, normalize(vec3(0.0, 1.0, -3.0)));
-Light light = Light(vec3(1.0, 1.0, 1.0) * intensity, normalize(light_direction));
+const Intersect miss = Intersect(MAX_LEN, vec3(0.0), Material(vec3(0.0), vec2(0.0, 0.0)));
+//Light light = Light(vec3(1.0, 1.0, 1.0) * intensity, normalize(vec3(0.0, 1.0, -3.0))); // Fixed light
+Light light = Light(vec3(1.0, 1.0, 1.0) * intensity, normalize(light_direction)); // Moving light
+uint rayCount = 0;
+
 
 Intersect intersect(Ray ray, Sphere sphere) {
-    vec3 oc = sphere.position - ray.origin;
+    vec3 oc = sphere.position_r.xyz - ray.origin;
     float l = dot(ray.direction, oc);
-    float det = pow(l, 2.0) - dot(oc, oc) + pow(sphere.radius, 2.0);
+    float det = pow(l, 2.0) - dot(oc, oc) + pow(sphere.position_r.w, 2.0);
     if (det < 0.0) return miss;
     
     float len = l - sqrt(det);
     if (len < 0.0) len = l + sqrt(det);
     if (len < 0.0) return miss;
-    return Intersect(len, (ray.origin + len*ray.direction - sphere.position) / sphere.radius, sphere.material);
+    return Intersect(len, (ray.origin + len*ray.direction - sphere.position_r.xyz) / sphere.position_r.w, sphere.material);
 }
 
 Intersect intersect(Ray ray, Plane plane) {
@@ -75,12 +76,12 @@ Intersect intersect(Ray ray, Plane plane) {
 
 Intersect trace(Ray ray) {
     Intersect intersection = miss;
-    Intersect plane = intersect(ray, Plane(vec3(0, 1, 0), Material(vec3(1.0, 1.0, 1.0), 0.5, 0.5)));
-    if (plane.material.diffuse > 0.0 || plane.material.specular > 0.0) { intersection = plane; }
+    Intersect plane = intersect(ray, Plane(vec3(0, 1, 0), Material(vec3(1.0, 1.0, 1.0), vec2(0.5, 0.5))));
+    if (plane.material.diff_spec[0] > 0.0 || plane.material.diff_spec[1] > 0.0) { intersection = plane; }
     for (int i = 0; i < num_spheres; i++) {
-        if(dot(ray.direction, spheres[i].position - ray.origin) >= 0) { // Prune those spheres at the back of the ray origin
+        if(dot(ray.direction, spheres[i].position_r.xyz - ray.origin) >= 0) { // Prune those spheres at the back of the ray origin
             Intersect sphere = intersect(ray, spheres[i]);
-            if ((sphere.material.diffuse > 0.0 || sphere.material.specular > 0.0)  && sphere.len < intersection.len) // If hit and in front of the last test hit
+            if ((sphere.material.diff_spec[0] > 0.0 || sphere.material.diff_spec[1] > 0.0)  && sphere.len < intersection.len) // If hit and in front of the last test hit
                 intersection = sphere;
         }
     }
@@ -90,23 +91,33 @@ Intersect trace(Ray ray) {
 vec3 radiance(Ray ray) {
     vec3 color = vec3(0.0), fresnel = vec3(0.0); // Fresnel factor:
     vec3 mask = vec3(1.0);
+    
     for (int i = 0; i <= iterations; ++i) {
         Intersect hit = trace(ray);
-        if (hit.material.diffuse > 0.0 || hit.material.specular > 0.0) { // If hit
+        if (hit.material.diff_spec[0] > 0.0 || hit.material.diff_spec[1] > 0.0) { // If hit
             
-            vec3 r0 = hit.material.color.rgb * hit.material.specular;
+            vec3 r0 = hit.material.color * hit.material.diff_spec[1]; // Specular = R0; r0 is for each color
             float hv = clamp(dot(hit.normal, -ray.direction), 0.0, 1.0); // cos(theta)
             fresnel = r0 + (1.0 - r0) * pow(1.0 - hv, 5.0); // Schlick approximation: fresnel = R0 + (1 - R0) * (1 - cos(theta))^5
-            mask *= fresnel;
+            mask *= fresnel; // Accumulated color mask
             
+            
+            // Miss all object = not in shadow
             if (trace(Ray(ray.origin + hit.len * ray.direction + epsilon * light.direction, light.direction)) == miss) {
                 color += clamp(dot(hit.normal, light.direction), 0.0, 1.0) * light.color
-                * hit.material.color.rgb * hit.material.diffuse
+                * hit.material.color * hit.material.diff_spec[0]
                 * (1.0 - fresnel) * mask / fresnel;
+                // 1st line : vertical light intensity on surface
+                // 2nd line : diffuse factor for each color
+                // 3rd line : old mask * transmittance
             }
+            
+            if(length(mask) < 0.0003) break;
             
             vec3 reflection = reflect(ray.direction, hit.normal);
             ray = Ray(ray.origin + hit.len * ray.direction + epsilon * reflection, reflection);
+            rayCount += 1;
+            
             
         } else {
             
@@ -119,18 +130,19 @@ vec3 radiance(Ray ray) {
     return color;
 }
 
-void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    vec2 uv = fragCoord.xy / iResolution.xy - vec2(0.5);
-    uv.x *= iResolution.x / iResolution.y;
+void mainImage(out vec4 fragColor, out uint count, in vec2 fragCoord) {
+    vec2 uv = fragCoord.xy / resolution.xy - vec2(0.5);
+    uv.x *= resolution.x / resolution.y;
 //    Ray ray = Ray(viewPos, normalize(mat3(projection * view) * vec3(uv.x, uv.y, 1.0f)));
     Ray ray = Ray(viewPos, normalize(vec3(uv.x, uv.y, -1.0f)));
-
+    
     fragColor = vec4(pow(radiance(ray) * exposure, vec3(1.0 / gamma)), 1.0);
+    count = rayCount;
 }
 
 
 
 void main()
 {
-    mainImage(color, gl_FragCoord.xy);
+    mainImage(color, totalRay, gl_FragCoord.xy);
 }

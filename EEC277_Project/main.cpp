@@ -78,23 +78,69 @@ int main(int argc, char const *argv[])
     // Initialize GLEW to setup the OpenGL Function pointers
     glewInit();
     
-    GLfloat g_vertex_buffer_data[] = {
-        -1,-1,
-        -1, 1,
-        1, 1,
-        1,-1,
-        1, 1,
-        -1,-1};
-    GLuint VBO, VAO;
-    glGenBuffers(1, &VBO);
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
+    GLfloat first_pass_quad[] = {
+        -1.0f, -1.0f,
+        -1.0f,  1.0f,
+         1.0f,  1.0f,
+         1.0f, -1.0f,
+         1.0f,  1.0f,
+        -1.0f, -1.0f};
+    GLfloat second_pass_quad[] = {
+        -1.0f, -1.0f, 0.0f, 0.0f,
+        -1.0f,  1.0f, 0.0f, 1.0f,
+         1.0f,  1.0f, 1.0f, 1.0f,
+         1.0f, -1.0f, 1.0f, 0.0f,
+         1.0f,  1.0f, 1.0f, 1.0f,
+        -1.0f, -1.0f, 0.0f, 0.0f};
+    GLuint first_pass_VBO, first_pass_VAO;
+    glGenBuffers(1, &first_pass_VBO);
+    glGenVertexArrays(1, &first_pass_VAO);
+    glBindVertexArray(first_pass_VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, first_pass_VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(first_pass_quad), first_pass_quad, GL_STATIC_DRAW);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
     glEnableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+    
+    GLuint second_pass_VBO, second_pass_VAO;
+    glGenBuffers(1, &second_pass_VBO);
+    glGenVertexArrays(1, &second_pass_VAO);
+    glBindVertexArray(second_pass_VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, second_pass_VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(second_pass_quad), second_pass_quad, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(1);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+    
+    GLuint FBO;
+    glGenFramebuffers(1, &FBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+    
+    GLuint image, data;
+    glGenTextures(1, &image);
+    glGenTextures(1, &data);
+    glBindTexture(GL_TEXTURE_2D, image);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WIDTH * MUL, HEIGHT * MUL, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, image, 0);
+    
+    glBindTexture(GL_TEXTURE_2D, data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WIDTH * MUL, HEIGHT * MUL, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, data, 0);
+    
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    
     
     // Define the viewport dimensions
     glViewport(0, 0, 2 * WIDTH, 2 * HEIGHT);
@@ -102,13 +148,14 @@ int main(int argc, char const *argv[])
     // OpenGL options
     glEnable(GL_DEPTH_TEST);
     
-    // Build and compile our shader program
-    Shader testShader("/Users/moderato/Desktop/EEC277/EEC277_Project/EEC277_Project/test.vs", "/Users/moderato/Desktop/EEC277/EEC277_Project/EEC277_Project/test.frag");
+    // Build and compile our shader programs
+    Shader firstPassShader("/Users/moderato/Desktop/EEC277/EEC277_Project/EEC277_Project/first_pass.vs", "/Users/moderato/Desktop/EEC277/EEC277_Project/EEC277_Project/first_pass.frag");
+    Shader secondPassShader("/Users/moderato/Desktop/EEC277/EEC277_Project/EEC277_Project/second_pass.vs", "/Users/moderato/Desktop/EEC277/EEC277_Project/EEC277_Project/second_pass.frag");
     
     int num_spheres = 3;
     if(argc > 1)
         num_spheres = atoi(argv[1]);
-    num_spheres = 225;
+    num_spheres = 125;
 //    if(num_spheres > MAX_SPHERE_NUM) {
 //        fprintf(stderr, "Too many spheres!\n");
 //        exit(EXIT_FAILURE);
@@ -121,6 +168,8 @@ int main(int argc, char const *argv[])
     int frames = 0;
     float start = glfwGetTime();
     
+    GLfloat* rayRateArray = new GLfloat[WIDTH * MUL * HEIGHT * MUL];
+    
     while (!glfwWindowShouldClose(window))
     {
         GLfloat current = glfwGetTime();
@@ -128,44 +177,66 @@ int main(int argc, char const *argv[])
         lastFrame = current;
         
         // Clear the colorbuffer
+        glfwPollEvents();
+        do_movement();
+        
+        glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+        
         glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-        testShader.Use();
-        glBindVertexArray(VAO);
+        firstPassShader.Use();
+        glBindVertexArray(first_pass_VAO);
         
         // Create camera transformations
         glm::mat4 view;
         view = camera.GetViewMatrix();
         glm::mat4 projection = glm::perspective(camera.Zoom, (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
-        glUniformMatrix4fv(glGetUniformLocation(testShader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-        glUniformMatrix4fv(glGetUniformLocation(testShader.Program, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(glGetUniformLocation(firstPassShader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+        glUniformMatrix4fv(glGetUniformLocation(firstPassShader.Program, "view"), 1, GL_FALSE, glm::value_ptr(view));
         
-        glUniform1f(glGetUniformLocation(testShader.Program, "iGlobalTime"), glfwGetTime());
-        glUniform3f(glGetUniformLocation(testShader.Program, "iResolution"), WIDTH * MUL, HEIGHT * MUL, 0);
-        glUniform1i(glGetUniformLocation(testShader.Program, "num_spheres"), num_spheres);
-        glUniform1i(glGetUniformLocation(testShader.Program, "iterations"), 6);
-        glUniform3f(glGetUniformLocation(testShader.Program, "viewPos"), camera.Position.x, camera.Position.y, camera.Position.z);
-        glUniform3f(glGetUniformLocation(testShader.Program, "light_direction"), -1.0 + 4.0 * cos(current), 1.5f, 1.0 + 4.0 * sin(current));
+        glUniform1f(glGetUniformLocation(firstPassShader.Program, "iGlobalTime"), glfwGetTime());
+        glUniform3f(glGetUniformLocation(firstPassShader.Program, "resolution"), WIDTH * MUL, HEIGHT * MUL, 0);
+        glUniform1i(glGetUniformLocation(firstPassShader.Program, "num_spheres"), num_spheres);
+        glUniform1i(glGetUniformLocation(firstPassShader.Program, "iterations"), 6);
+        glUniform3f(glGetUniformLocation(firstPassShader.Program, "viewPos"), camera.Position.x, camera.Position.y, camera.Position.z);
+        glUniform3f(glGetUniformLocation(firstPassShader.Program, "light_direction"), -1.0 + 4.0 * cos(current), 1.5f, 1.0 + 4.0 * sin(current));
         
         for(int i = 0; i < num_spheres; i++) {
             std::string sphere = "spheres[" + std::to_string(i) + "]";
-            glUniform1f(glGetUniformLocation(testShader.Program, (sphere + ".radius").c_str()), 0.5f);
-            glUniform3f(glGetUniformLocation(testShader.Program, (sphere + ".position").c_str()), sp_pos[i].x, sp_pos[i].y, sp_pos[i].z);
-            glUniform3f(glGetUniformLocation(testShader.Program, (sphere + ".material.color").c_str()), 0.2f, 0.3, 0.8f);
-            glUniform1f(glGetUniformLocation(testShader.Program, (sphere + ".material.diffuse").c_str()), 1.0f);
-            glUniform1f(glGetUniformLocation(testShader.Program, (sphere + ".material.specular").c_str()), 0.5f);
+            glUniform4f(glGetUniformLocation(firstPassShader.Program, (sphere + ".position_r").c_str()), sp_pos[i].x, sp_pos[i].y, sp_pos[i].z, 0.5f);
+            glUniform3f(glGetUniformLocation(firstPassShader.Program, (sphere + ".material.color").c_str()), 0.2f, 0.3, 0.8f);
+            glUniform2f(glGetUniformLocation(firstPassShader.Program, (sphere + ".material.diff_spec").c_str()), 1.0f, 0.5f);
         }
         
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
         
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        
+        // Draw Screen
+        secondPassShader.Use();
+        glBindVertexArray(second_pass_VAO);
+        glBindTexture(GL_TEXTURE_2D, image);	// Use the color attachment texture as the texture of the quad plane
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindVertexArray(0);
+        
+        glBindTexture(GL_TEXTURE_2D, data);
+        glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_UNSIGNED_INT, rayRateArray);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        
+        int sum = 0;
+        for(int i = 0; i < WIDTH * HEIGHT * MUL * MUL; i++) {
+            sum += rayRateArray[i];
+        }
+        
+        std::cout << sum << " ray calculations per frame"<< std::endl;
+        
         frames++;
         float fps = frames * 1.0f / (current - start);
         std::cout << fps << " frames per second" << std::endl;
-
-        glfwPollEvents();
-        do_movement();
         
         // Swap the screen buffers
         glfwSwapBuffers(window);

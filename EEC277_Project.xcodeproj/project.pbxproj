@@ -26,6 +26,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		664EA9141E762D8D001FD27A /* first_pass.frag */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = first_pass.frag; sourceTree = "<group>"; };
+		664EA9151E762D8D001FD27A /* first_pass.vs */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = first_pass.vs; sourceTree = "<group>"; };
+		664EA9161E76310A001FD27A /* second_pass.frag */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = second_pass.frag; sourceTree = "<group>"; };
+		664EA9171E76310A001FD27A /* second_pass.vs */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = second_pass.vs; sourceTree = "<group>"; };
 		665FE9381E64CD0600886555 /* EEC277_Project */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = EEC277_Project; sourceTree = BUILT_PRODUCTS_DIR; };
 		665FE93B1E64CD0600886555 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		665FE9451E64CE8B00886555 /* libGLEW.2.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libGLEW.2.0.0.dylib; path = ../../../../../usr/local/lib/libGLEW.2.0.0.dylib; sourceTree = "<group>"; };
@@ -33,8 +37,6 @@
 		665FE9491E64CF0C00886555 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
 		665FE94B1E64D01B00886555 /* camera.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = camera.h; sourceTree = "<group>"; };
 		665FE94C1E64D01B00886555 /* shader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = shader.h; sourceTree = "<group>"; };
-		665FE94D1E64E49500886555 /* test.frag */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = test.frag; sourceTree = "<group>"; };
-		665FE94E1E64E49500886555 /* test.vs */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = test.vs; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -71,8 +73,10 @@
 		665FE93A1E64CD0600886555 /* EEC277_Project */ = {
 			isa = PBXGroup;
 			children = (
-				665FE94D1E64E49500886555 /* test.frag */,
-				665FE94E1E64E49500886555 /* test.vs */,
+				664EA9161E76310A001FD27A /* second_pass.frag */,
+				664EA9171E76310A001FD27A /* second_pass.vs */,
+				664EA9141E762D8D001FD27A /* first_pass.frag */,
+				664EA9151E762D8D001FD27A /* first_pass.vs */,
 				665FE94B1E64D01B00886555 /* camera.h */,
 				665FE94C1E64D01B00886555 /* shader.h */,
 				665FE93B1E64CD0600886555 /* main.cpp */,
