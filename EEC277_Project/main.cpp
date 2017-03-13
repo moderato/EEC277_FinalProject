@@ -31,7 +31,7 @@ void do_movement();
 const GLuint WIDTH = 800, HEIGHT = 600;
 
 // Camera
-Camera  camera(glm::vec3(0.0f, 4.0f, 20.0f));
+Camera  camera(glm::vec3(0.0f, 1.5f, 12.0f));
 GLfloat lastX  =  WIDTH;
 GLfloat lastY  =  HEIGHT;
 bool keys[1024];
@@ -129,6 +129,7 @@ int main(int argc, char const *argv[])
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, image, 0);
+
     
     glBindTexture(GL_TEXTURE_2D, data);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WIDTH * MUL, HEIGHT * MUL, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
@@ -136,7 +137,6 @@ int main(int argc, char const *argv[])
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, data, 0);
-    
     GLenum DrawBuffers[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
     glDrawBuffers(2, DrawBuffers);
     
@@ -152,13 +152,13 @@ int main(int argc, char const *argv[])
     glEnable(GL_DEPTH_TEST);
     
     // Build and compile our shader programs
-    Shader firstPassShader("/Users/moderato/Desktop/EEC277/EEC277_Project/EEC277_Project/first_pass.vs", "/Users/moderato/Desktop/EEC277/EEC277_Project/EEC277_Project/first_pass.frag");
-    Shader secondPassShader("/Users/moderato/Desktop/EEC277/EEC277_Project/EEC277_Project/second_pass.vs", "/Users/moderato/Desktop/EEC277/EEC277_Project/EEC277_Project/second_pass.frag");
+    Shader firstPassShader("first_pass.vs", "first_pass.frag");
+    Shader secondPassShader("second_pass.vs", "second_pass.frag");
     
     int num_spheres = 3;
     if(argc > 1)
         num_spheres = atoi(argv[1]);
-    num_spheres = 125;
+    num_spheres = 25;
 //    if(num_spheres > MAX_SPHERE_NUM) {
 //        fprintf(stderr, "Too many spheres!\n");
 //        exit(EXIT_FAILURE);
@@ -204,12 +204,15 @@ int main(int argc, char const *argv[])
         glUniform1i(glGetUniformLocation(firstPassShader.Program, "iterations"), 6);
         glUniform3f(glGetUniformLocation(firstPassShader.Program, "viewPos"), camera.Position.x, camera.Position.y, camera.Position.z);
         glUniform3f(glGetUniformLocation(firstPassShader.Program, "light_direction"), -1.0 + 4.0 * cos(current), 1.5f, 1.0 + 4.0 * sin(current));
+        double xpos, ypos;
+	glfwGetCursorPos(window,&xpos, &ypos);
+	glUniform4f(glGetUniformLocation(firstPassShader.Program, "cursor"), xpos, ypos, xpos, ypos);
         
         for(int i = 0; i < num_spheres; i++) {
             std::string sphere = "spheres[" + std::to_string(i) + "]";
             glUniform4f(glGetUniformLocation(firstPassShader.Program, (sphere + ".position_r").c_str()), sp_pos[i].x, sp_pos[i].y, sp_pos[i].z, 0.5f);
             glUniform3f(glGetUniformLocation(firstPassShader.Program, (sphere + ".material.color").c_str()), 0.2f, 0.3, 0.8f);
-            glUniform2f(glGetUniformLocation(firstPassShader.Program, (sphere + ".material.diff_spec").c_str()), 1.0f, 0.5f);
+            glUniform3f(glGetUniformLocation(firstPassShader.Program, (sphere + ".material.diff_spec_ref").c_str()), 0.5f, 0.5f, 1.1f);
         }
         
         glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -234,6 +237,7 @@ int main(int argc, char const *argv[])
         for(int i = 0; i < WIDTH * HEIGHT * MUL * MUL; i++) {
             sum += rayRateArray[i];
         }
+        
         std::cout << int(sum * 255) << " ray calculations per frame"<< std::endl;
         
         frames++;
