@@ -32,12 +32,11 @@ struct Plane {
 };
 
 uniform int       num_spheres;           // Sphere number
-uniform Sphere    spheres[325];          // Sphere Array
+uniform Sphere    spheres[339];          // Sphere Array
 uniform vec3      resolution;            // Viewport resolution (in pixels)
 uniform vec3      viewPos;               // View Position
 uniform vec3      light_direction;       // Light direction for static/moving light
 uniform int       iterations;            // Bouncing limit
-
 uniform mat4      projection;            // Projection Matrix
 uniform mat4      view;                  // View Matrix
 
@@ -119,7 +118,7 @@ vec3 radiance(Ray ray) {
             rayCount = rayCount + 1.0f;
             
             
-        } else {
+        } else { // If not hit
             
             vec3 spotlight = vec3(1e6) * pow(abs(dot(ray.direction, light.direction)), 250.0);
             color += mask * (ambient + spotlight);
@@ -133,11 +132,12 @@ vec3 radiance(Ray ray) {
 void mainImage(out vec4 fragColor, out vec4 count, in vec2 fragCoord) {
     vec2 uv = fragCoord.xy / resolution.xy - vec2(0.5);
     uv.x *= resolution.x / resolution.y;
-//    Ray ray = Ray(viewPos, normalize(mat3(projection * view) * vec3(uv.x, uv.y, 1.0f)));
-    Ray ray = Ray(viewPos, normalize(vec3(uv.x, uv.y, -1.0f)));
+    
+//    Ray ray = Ray(viewPos, normalize(mat3(projection * view) * vec3(uv.x, uv.y, 1.0f))); // With projection and view
+    Ray ray = Ray(viewPos, normalize(vec3(uv.x, uv.y, -1.0f))); // Without ...
     
     fragColor = vec4(pow(radiance(ray) * exposure, vec3(1.0f / gamma)), 1.0f);
-    count = vec4(vec3(0.0, 0.0, rayCount / 255.0f), 1.0f);
+    count = vec4(rayCount / 255.0f, 0.0f, 0.0f, 1.0f); // Put ray calculation count in red color of output vector
 }
 
 
