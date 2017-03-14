@@ -134,7 +134,7 @@ vec3 radiance(Ray ray) {
             vec3 refraction_out = refract(refraction_in, (hit.center-exit)/0.5, 1/hit.material.diff_spec_ref[2]);
             ray = Ray(exit + epsilon * refraction_out, refraction_out);
             rayCount += rayCount + 1.0f;
-	    color += mask * ambient ;
+	    color += mask * hit.material.color;
                 // enter : where ray hit the sphere
                 // exit : where ray exit sphere after refract travel inside
 
