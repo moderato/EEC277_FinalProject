@@ -146,7 +146,7 @@ int main(int argc, char const *argv[])
     
     
     // Define the viewport dimensions
-    glViewport(0, 0, 2 * WIDTH, 2 * HEIGHT);
+    glViewport(0, 0, MUL * WIDTH, MUL * HEIGHT);
     
     // OpenGL options
     glEnable(GL_DEPTH_TEST);
@@ -211,8 +211,8 @@ int main(int argc, char const *argv[])
         for(int i = 0; i < num_spheres; i++) {
             std::string sphere = "spheres[" + std::to_string(i) + "]";
             glUniform4f(glGetUniformLocation(firstPassShader.Program, (sphere + ".position_r").c_str()), sp_pos[i].x, sp_pos[i].y, sp_pos[i].z, 0.5f);
-            glUniform3f(glGetUniformLocation(firstPassShader.Program, (sphere + ".material.color").c_str()), 0.2f, 0.3, 0.8f);
-            glUniform3f(glGetUniformLocation(firstPassShader.Program, (sphere + ".material.diff_spec_ref").c_str()), 0.5f, 0.5f, 1.1f);
+            glUniform3f(glGetUniformLocation(firstPassShader.Program, (sphere + ".material.color").c_str()), 1.0f, 1.0, 0.8f);
+            glUniform3f(glGetUniformLocation(firstPassShader.Program, (sphere + ".material.diff_spec_ref").c_str()), 0.0f, 0.5f, 1.1f);
         }
         
         glDrawArrays(GL_TRIANGLES, 0, 6);
