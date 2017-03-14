@@ -31,14 +31,16 @@ struct Plane {
     Material material;
 };
 
-uniform int       num_spheres;           // Sphere number
 uniform Sphere    spheres[339];          // Sphere Array
-uniform vec3      resolution;            // Viewport resolution (in pixels)
-uniform vec3      viewPos;               // View Position
-uniform vec3      light_direction;       // Light direction for static/moving light
-uniform int       iterations;            // Bouncing limit
 uniform mat4      projection;            // Projection Matrix
 uniform mat4      view;                  // View Matrix
+uniform vec3      resolution;            // Viewport resolution (in pixels)
+uniform int       num_spheres;           // Sphere number
+uniform int       iterations;            // Bouncing limit
+uniform vec3      viewPos;               // View Position
+uniform vec3      light_direction;       // Light direction for static/moving light
+uniform bool      withPlane;             // Has a plane or not
+uniform bool      canRefract;            // Enable refraction
 
 layout(location = 0) out vec4 color;
 layout(location = 1) out vec4 totalRay;
@@ -50,10 +52,9 @@ const float intensity = 100.0;
 const vec3 ambient = vec3(0.6, 0.8, 1.0) * intensity / gamma;
 const float MAX_LEN = 2147483647.0;
 const Intersect miss = Intersect(MAX_LEN, vec3(0.0), Material(vec3(0.0), vec2(0.0, 0.0)));
-//Light light = Light(vec3(1.0, 1.0, 1.0) * intensity, normalize(vec3(0.0, 1.0, -3.0))); // Fixed light
-Light light = Light(vec3(1.0, 1.0, 1.0) * intensity, normalize(light_direction)); // Moving light
-float rayCount = 0;
 
+Light light = Light(vec3(1.0, 1.0, 1.0) * intensity, normalize(light_direction)); // Moving light
+float rayCount = 0; // Ray calculation count for this pixel
 
 Intersect intersect(Ray ray, Sphere sphere) {
     vec3 oc = sphere.position_r.xyz - ray.origin;
@@ -75,8 +76,10 @@ Intersect intersect(Ray ray, Plane plane) {
 
 Intersect trace(Ray ray) {
     Intersect intersection = miss;
-    Intersect plane = intersect(ray, Plane(vec3(0, 1, 0), Material(vec3(1.0, 1.0, 1.0), vec2(0.5, 0.5))));
-    if (plane.material.diff_spec[0] > 0.0 || plane.material.diff_spec[1] > 0.0) { intersection = plane; }
+    if (withPlane) {
+        Intersect plane = intersect(ray, Plane(vec3(0, 1, 0), Material(vec3(1.0, 1.0, 1.0), vec2(0.5, 0.5))));
+        if (plane.material.diff_spec[0] > 0.0 || plane.material.diff_spec[1] > 0.0) { intersection = plane; }
+    }
     for (int i = 0; i < num_spheres; i++) {
         if(dot(ray.direction, spheres[i].position_r.xyz - ray.origin) >= 0) { // Prune those spheres at the back of the ray origin
             Intersect sphere = intersect(ray, spheres[i]);

@@ -23,11 +23,23 @@
 #define MUL 1
 #endif
 
-// Function prototypes
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
-void mouse_callback(GLFWwindow* window, double xpos, double ypos);
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-void do_movement();
+#define MAX_SPHERE_NUM       339    // Maximum number of spheres allowed under 4096 uniform constrains
+#define MAX_ITERATION_NUM    16
+#define INIT_SPHERE_NUM      125
+#define INIT_ITERATION_NUM   6
+
+// Define a struct storing test parameters
+typedef struct {
+    int nums;
+    int iterations;
+    
+    bool withPlane;
+    bool lightMoving;
+    bool canRefract;
+    bool turnOffRayCalculation;
+} TestStruct;
+
+TestStruct testStruct;
 
 // Window dimensions
 const GLuint WIDTH = 800, HEIGHT = 600;
@@ -42,12 +54,119 @@ bool keys[1024];
 GLfloat deltaTime = 0.0f;   // Time between current frame and last frame
 GLfloat lastFrame = 0.0f;   // Time of last frame
 
-// Spheres
-const int MAX_SPHERE_NUM = 339;    // Maximum number of spheres allowed under 4096 uniform constrains
+// Sphere array
 glm::vec3 sp_pos[MAX_SPHERE_NUM];
 
-// The MAIN function, from here we start the application and run the game loop
-int main(int argc, char const *argv[])
+const char usageString[] = {"\
+[-n]\tSet number of spheres\n \
+[-i]\tSet number of iterations\n \
+[-p]\tAdd a plane to the scene\n \
+[-m]\tEnable light movement\n \
+[-r]\tEnable refraction calculation\n \
+[-o]\tTurn off ray rate calculation\n\n"};
+
+void usage(const char *progName)
+{
+  fprintf(stderr," %s usage:\n %s \n", progName, usageString);
+  fflush(stderr);
+}
+
+void parseArgs(int argc, char **argv, TestStruct *testStruct) {
+    int i=1;
+    argc--;
+    while (argc > 0)
+    {
+        if (strcmp(argv[i],"-n") == 0) // Change sphere number
+        {
+            i++;
+            argc--;
+            testStruct->nums = atoi(argv[i]);
+        }
+        else if (strcmp(argv[i],"-i") == 0) // Change iteration number
+        {
+            i++;
+            argc--;
+            testStruct->iterations = atoi(argv[i]);
+        }
+        else if (strcmp(argv[i],"-p") == 0) // With plane
+        {
+            testStruct->withPlane = true;
+        }
+        else if (strcmp(argv[i],"-m") == 0) // Moving light
+        {
+            testStruct->lightMoving = true;
+        }
+        else if (strcmp(argv[i],"-r") == 0) // Use refraction
+        {
+            testStruct->canRefract = true;
+        }
+        else if (strcmp(argv[i],"-o") == 0) // Turn off ray calculation
+        {
+            testStruct->turnOffRayCalculation = true;
+        }
+        else
+        {
+            fprintf(stderr,"Unrecognized argument: %s \n", argv[i]);
+            usage(argv[0]);
+            exit(-1);
+        }
+        i++;
+        argc--;
+    }
+}
+
+// Is called whenever a key is pressed/released via GLFW
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
+{
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+    glfwSetWindowShouldClose(window, GL_TRUE);
+    if (key >= 0 && key < 1024)
+    {
+        if (action == GLFW_PRESS)
+        keys[key] = true;
+        else if (action == GLFW_RELEASE)
+        keys[key] = false;
+    }
+}
+
+void do_movement()
+{
+    // Camera controls
+    if (keys[GLFW_KEY_W])
+        camera.ProcessKeyboard(FORWARD, deltaTime);
+    if (keys[GLFW_KEY_S])
+        camera.ProcessKeyboard(BACKWARD, deltaTime);
+    if (keys[GLFW_KEY_A])
+        camera.ProcessKeyboard(LEFT, deltaTime);
+    if (keys[GLFW_KEY_D])
+        camera.ProcessKeyboard(RIGHT, deltaTime);
+}
+
+bool firstMouse = true;
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    if (firstMouse)
+    {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+    
+    GLfloat xoffset = xpos - lastX;
+    GLfloat yoffset = lastY - ypos;  // Reversed since y-coordinates go from bottom to left
+    
+    lastX = xpos;
+    lastY = ypos;
+    
+    camera.ProcessMouseMovement(xoffset, yoffset);
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    camera.ProcessMouseScroll(yoffset);
+}
+
+int main(int argc, char **argv)
 {
     // Init GLFW
     glfwInit();
@@ -80,22 +199,52 @@ int main(int argc, char const *argv[])
     // Initialize GLEW to setup the OpenGL Function pointers
     glewInit();
     
+    testStruct.nums = INIT_SPHERE_NUM;
+    testStruct.iterations = INIT_ITERATION_NUM;
+    testStruct.withPlane = false;
+    testStruct.lightMoving = false;
+    testStruct.canRefract = false;
+    testStruct.turnOffRayCalculation = false;
+    
+    parseArgs(argc, argv, &testStruct);
+    
+    if(testStruct.nums > MAX_SPHERE_NUM) { // Check if sphere number exceeds limit
+        fprintf(stderr, "Too many spheres!\n");
+        exit(EXIT_FAILURE);
+    }
+    if(testStruct.iterations > MAX_ITERATION_NUM) { // Check if sphere number exceeds limit
+        fprintf(stderr, "Too many iterations!\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    // Positions for each spheres
+    for(int i = 0; i < testStruct.nums; i++) {
+        sp_pos[i] = glm::vec3(-3.0f + 1.5f * (i % 5), 0.5f + 1.5f * (i / 25), 0.0f + 1.5f * ((i % 25) / 5));
+    }
+    
+    // Initialize frame number and start time;
+    int frames = 0;
+    float start = glfwGetTime();
+    
+    // Array to store ray calculation count data
+    GLfloat* rayRateArray = new GLfloat[WIDTH * MUL * HEIGHT * MUL];
+    
     
     
     // Two arrays both containing two triangles to cover the whole window for the first pass and second pass, respectively
     GLfloat first_pass_quad[] = {
         -1.0f, -1.0f,
         -1.0f,  1.0f,
-         1.0f,  1.0f,
-         1.0f, -1.0f,
-         1.0f,  1.0f,
+        1.0f,  1.0f,
+        1.0f, -1.0f,
+        1.0f,  1.0f,
         -1.0f, -1.0f};
     GLfloat second_pass_quad[] = {
         -1.0f, -1.0f, 0.0f, 0.0f,
         -1.0f,  1.0f, 0.0f, 1.0f,
-         1.0f,  1.0f, 1.0f, 1.0f,
-         1.0f, -1.0f, 1.0f, 0.0f,
-         1.0f,  1.0f, 1.0f, 1.0f,
+        1.0f,  1.0f, 1.0f, 1.0f,
+        1.0f, -1.0f, 1.0f, 0.0f,
+        1.0f,  1.0f, 1.0f, 1.0f,
         -1.0f, -1.0f, 0.0f, 0.0f};
     
     
@@ -168,45 +317,22 @@ int main(int argc, char const *argv[])
     
     
     // Define the viewport dimensions
-    glViewport(0, 0, 2 * WIDTH, 2 * HEIGHT);
+    glViewport(0, 0, MUL * WIDTH, MUL * HEIGHT);
     
     // OpenGL options
     glEnable(GL_DEPTH_TEST);
     
     // Build and compile our shader programs
+    // On Mac OS with Xcode we use absolute path, while on other IDE relative path is allowed
     Shader firstPassShader("/Users/moderato/Desktop/EEC277/EEC277_Project/EEC277_Project/first_pass.vs",
                            "/Users/moderato/Desktop/EEC277/EEC277_Project/EEC277_Project/first_pass.frag");
     Shader secondPassShader("/Users/moderato/Desktop/EEC277/EEC277_Project/EEC277_Project/second_pass.vs",
                             "/Users/moderato/Desktop/EEC277/EEC277_Project/EEC277_Project/second_pass.frag");
     
     
-    
-    // Number of spheres in array
-    int num_spheres = 3;
-    if(argc > 1)
-        num_spheres = atoi(argv[1]);
-    num_spheres = 125;
-    if(num_spheres > MAX_SPHERE_NUM) { // Check if sphere number exceeds limit
-        fprintf(stderr, "Too many spheres!\n");
-        exit(EXIT_FAILURE);
-    }
-    
-    // Positions for each spheres
-    for(int i = 0; i < num_spheres; i++) {
-        sp_pos[i] = glm::vec3(-3.0f + 1.5f * (i % 5), 0.5f + 1.5f * (i / 25), 0.0f + 1.5f * ((i % 25) / 5));
-    }
-    
-    
-    
-    // Initialize frame number and start time;
-    int frames = 0;
-    float start = glfwGetTime();
-    
-    // Array to store ray calculation count data
-    GLfloat* rayRateArray = new GLfloat[WIDTH * MUL * HEIGHT * MUL];
-    
-    
-    
+    std::cout << "Tested on " << glGetString(GL_RENDERER) << 
+                " using " << glGetString(GL_VERSION) << std::endl;
+
     while (!glfwWindowShouldClose(window))
     {
         GLfloat current = glfwGetTime();
@@ -219,7 +345,10 @@ int main(int argc, char const *argv[])
         
         /******************** First pass. Render to two textures attached to FBO. ********************/
         // Bind self-created FBO
-        glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+        if(testStruct.turnOffRayCalculation)
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        else
+            glBindFramebuffer(GL_FRAMEBUFFER, FBO);
         
         // Clear window
         glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
@@ -237,15 +366,17 @@ int main(int argc, char const *argv[])
         // Pass uniforms to first pass fragment shader
         glUniformMatrix4fv(glGetUniformLocation(firstPassShader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(glGetUniformLocation(firstPassShader.Program, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        glUniform1f(glGetUniformLocation(firstPassShader.Program, "iGlobalTime"), glfwGetTime());
         glUniform3f(glGetUniformLocation(firstPassShader.Program, "resolution"), WIDTH * MUL, HEIGHT * MUL, 0);
-        glUniform1i(glGetUniformLocation(firstPassShader.Program, "num_spheres"), num_spheres);
-        glUniform1i(glGetUniformLocation(firstPassShader.Program, "iterations"), 6);
+        glUniform1i(glGetUniformLocation(firstPassShader.Program, "num_spheres"), testStruct.nums);
+        glUniform1i(glGetUniformLocation(firstPassShader.Program, "iterations"), testStruct.iterations);
         glUniform3f(glGetUniformLocation(firstPassShader.Program, "viewPos"), camera.Position.x, camera.Position.y, camera.Position.z);
-        glUniform3f(glGetUniformLocation(firstPassShader.Program, "light_direction"), -1.0 + 4.0 * cos(current), 1.5f, 1.0 + 4.0 * sin(current));
+        glUniform3f(glGetUniformLocation(firstPassShader.Program, "light_direction"),
+                    -1.0f + 4.0f * cos(current) * testStruct.lightMoving, 1.5f, 1.0f + 4.0f * sin(current) * testStruct.lightMoving);
+        glUniform1i(glGetUniformLocation(firstPassShader.Program, "withPlane"), testStruct.withPlane);
+        glUniform1i(glGetUniformLocation(firstPassShader.Program, "canRefract"), testStruct.canRefract);
         
         // Pass sphere array info to fragment shader
-        for(int i = 0; i < num_spheres; i++) {
+        for(int i = 0; i < testStruct.nums; i++) {
             std::string sphere = "spheres[" + std::to_string(i) + "]";
             glUniform4f(glGetUniformLocation(firstPassShader.Program, (sphere + ".position_r").c_str()),
                         sp_pos[i].x, sp_pos[i].y, sp_pos[i].z, 0.5f);
@@ -257,35 +388,36 @@ int main(int argc, char const *argv[])
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
         
-        
-        
+        // No second pass if ray calculation turned off.
         /******************** Second pass. Draw image texture to default frame buffer  ********************/
-        // Bind default frame buffer
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        
-        // Clear window
-        glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        
-        // Draw Screen with image texture
-        secondPassShader.Use();
-        glBindVertexArray(second_pass_VAO);
-        glBindTexture(GL_TEXTURE_2D, image);	// Use the color attachment texture as the texture of the quad plane
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        glBindVertexArray(0);
-        
-        // Read data from data texture
-        glBindTexture(GL_TEXTURE_2D, data);
-        glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_FLOAT, rayRateArray);
-        glBindTexture(GL_TEXTURE_2D, 0);
-        
-        // Sum up ray calculation count
-        float sum = 0;
-        for(int i = 0; i < WIDTH * HEIGHT * MUL * MUL; i++) {
-            sum += rayRateArray[i];
+        if(!testStruct.turnOffRayCalculation) {
+            // Bind default frame buffer
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            
+            // Clear window
+            glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            
+            // Draw Screen with image texture
+            secondPassShader.Use();
+            glBindVertexArray(second_pass_VAO);
+            glBindTexture(GL_TEXTURE_2D, image);    // Use the color attachment texture as the texture of the quad plane
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+            glBindVertexArray(0);
+            
+            // Read data from data texture
+            glBindTexture(GL_TEXTURE_2D, data);
+            glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_FLOAT, rayRateArray);
+            glBindTexture(GL_TEXTURE_2D, 0);
+            
+            // Sum up ray calculation count
+            float sum = 0;
+            for(int i = 0; i < WIDTH * HEIGHT * MUL * MUL; i++) {
+                sum += rayRateArray[i];
+            }
+            std::cout << int(sum * 255) << " ray calculations per frame"<< std::endl;
         }
-        std::cout << int(sum * 255) << " ray calculations per frame"<< std::endl;
-        
+
         // Calculate frame rates
         frames++;
         float fps = frames * 1.0f / (glfwGetTime() - start);
@@ -308,55 +440,4 @@ int main(int argc, char const *argv[])
     // Terminate GLFW, clearing any resources allocated by GLFW.
     glfwTerminate();
     return 0;
-}
-
-// Is called whenever a key is pressed/released via GLFW
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
-{
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-    glfwSetWindowShouldClose(window, GL_TRUE);
-    if (key >= 0 && key < 1024)
-    {
-        if (action == GLFW_PRESS)
-        keys[key] = true;
-        else if (action == GLFW_RELEASE)
-        keys[key] = false;
-    }
-}
-
-void do_movement()
-{
-    // Camera controls
-    if (keys[GLFW_KEY_W])
-        camera.ProcessKeyboard(FORWARD, deltaTime);
-    if (keys[GLFW_KEY_S])
-        camera.ProcessKeyboard(BACKWARD, deltaTime);
-    if (keys[GLFW_KEY_A])
-        camera.ProcessKeyboard(LEFT, deltaTime);
-    if (keys[GLFW_KEY_D])
-        camera.ProcessKeyboard(RIGHT, deltaTime);
-}
-
-bool firstMouse = true;
-void mouse_callback(GLFWwindow* window, double xpos, double ypos)
-{
-    if (firstMouse)
-    {
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = false;
-    }
-    
-    GLfloat xoffset = xpos - lastX;
-    GLfloat yoffset = lastY - ypos;  // Reversed since y-coordinates go from bottom to left
-    
-    lastX = xpos;
-    lastY = ypos;
-    
-    camera.ProcessMouseMovement(xoffset, yoffset);
-}
-
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
-    camera.ProcessMouseScroll(yoffset);
 }
