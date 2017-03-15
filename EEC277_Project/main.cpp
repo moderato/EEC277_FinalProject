@@ -26,7 +26,7 @@
 #define MAX_SPHERE_NUM       339    // Maximum number of spheres allowed under 4096 uniform constrains
 #define MAX_ITERATION_NUM    16
 #define INIT_SPHERE_NUM      125
-#define INIT_ITERATION_NUM   10
+#define INIT_ITERATION_NUM   6
 
 // Define a struct storing test parameters
 typedef struct {
@@ -72,9 +72,9 @@ const char usageString[] = {"\
 [-m]\tEnable light movement\n \
 [-r]\tEnable refraction calculation\n \
 [-o]\tTurn off ray rate calculation\n \
-+[-nt]\tDo number test \
-+[-it]\tDo iteration test \
-+[-dt]\tDo distance test\n\n"};
+[-nt]\tDo number test\n \
+[-it]\tDo iteration test\n \
+[-dt]\tDo distance test\n\n"};
 
 void usage(const char *progName)
 {
@@ -390,14 +390,7 @@ int main(int argc, char **argv)
         firstPassShader.Use();
         glBindVertexArray(first_pass_VAO);
         
-        // Create camera transformations
-        glm::mat4 view;
-        view = camera.GetViewMatrix();
-        glm::mat4 projection = glm::perspective(camera.Zoom, (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
-        
         // Pass uniforms to first pass fragment shader
-        glUniformMatrix4fv(glGetUniformLocation(firstPassShader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-        glUniformMatrix4fv(glGetUniformLocation(firstPassShader.Program, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniform3f(glGetUniformLocation(firstPassShader.Program, "resolution"), WIDTH * MUL, HEIGHT * MUL, 0);
         glUniform1i(glGetUniformLocation(firstPassShader.Program, "num_spheres"), testStruct.nums);
         glUniform1i(glGetUniformLocation(firstPassShader.Program, "iterations"), testStruct.iterations);
@@ -407,8 +400,8 @@ int main(int argc, char **argv)
         glUniform1i(glGetUniformLocation(firstPassShader.Program, "withPlane"), testStruct.withPlane);
         glUniform1i(glGetUniformLocation(firstPassShader.Program, "canRefract"), testStruct.canRefract);
         double xpos, ypos;
-	glfwGetCursorPos(window,&xpos, &ypos);
-	glUniform4f(glGetUniformLocation(firstPassShader.Program, "cursor"), xpos, ypos, xpos, ypos);
+        glfwGetCursorPos(window, &xpos, &ypos);
+        glUniform2f(glGetUniformLocation(firstPassShader.Program, "cursor"), xpos, ypos);
         
         // Pass sphere array info to fragment shader
         for(int i = 0; i < testStruct.nums; i++) {
@@ -457,11 +450,11 @@ int main(int argc, char **argv)
 	     double currentTime = glfwGetTime();
 	     nbFrames++;
 	     if ( currentTime - lastTime >= 5.0f ){ // If last prinf() was more than 1 sec ago
-		 // printf and reset timer
-		 float fps = nbFrames/(currentTime - lastTime);
-		 std::cout << fps << " frames per second" << std::endl;
-		 nbFrames = 0.0;
-		 lastTime += (currentTime - lastTime);
+             // printf and reset timer
+             float fps = nbFrames/(currentTime - lastTime);
+             std::cout << fps << " frames per second" << std::endl;
+             nbFrames = 0.0;
+             lastTime += (currentTime - lastTime);
 	     }
         
         // Swap the screen buffers
