@@ -26,7 +26,7 @@
 #define MAX_SPHERE_NUM       339    // Maximum number of spheres allowed under 4096 uniform constrains
 #define MAX_ITERATION_NUM    16
 #define INIT_SPHERE_NUM      125
-#define INIT_ITERATION_NUM   10
+#define INIT_ITERATION_NUM   6
 
 // Define a struct storing test parameters
 typedef struct {
@@ -37,7 +37,6 @@ typedef struct {
     bool lightMoving;
     bool canRefract;
     bool turnOffRayCalculation;
-    
     bool doNumberTest;
     bool doIterationTest;
     bool doDistanceTest;
@@ -73,8 +72,8 @@ const char usageString[] = {"\
 [-m]\tEnable light movement\n \
 [-r]\tEnable refraction calculation\n \
 [-o]\tTurn off ray rate calculation\n \
-[-nt]\tDo number test \
-[-it]\tDo iteration test \
+[-nt]\tDo number test\n \
+[-it]\tDo iteration test\n \
 [-dt]\tDo distance test\n\n"};
 
 void usage(const char *progName)
@@ -116,7 +115,7 @@ void parseArgs(int argc, char **argv, TestStruct *testStruct) {
         {
             testStruct->turnOffRayCalculation = true;
         }
-        else if (strcmp(argv[i],"-nt") == 0) // Do number testing
+	else if (strcmp(argv[i],"-nt") == 0) // Do number testing
         {
             if(!testStruct->doIterationTest && !testStruct->doDistanceTest)
                 testStruct->doNumberTest = true;
@@ -225,7 +224,7 @@ int main(int argc, char **argv)
     glewExperimental = GL_TRUE;
     // Initialize GLEW to setup the OpenGL Function pointers
     glewInit();
-    
+
     // Initialize parameters and parse arguments
     testStruct.nums = INIT_SPHERE_NUM;
     testStruct.iterations = INIT_ITERATION_NUM;
@@ -233,9 +232,11 @@ int main(int argc, char **argv)
     testStruct.lightMoving = false;
     testStruct.canRefract = false;
     testStruct.turnOffRayCalculation = false;
+
     testStruct.doNumberTest = false;
     testStruct.doDistanceTest = false;
     testStruct.doIterationTest = false;
+    
     parseArgs(argc, argv, &testStruct);
     
     if(testStruct.nums > MAX_SPHERE_NUM) { // Check if sphere number exceeds limit
@@ -253,8 +254,8 @@ int main(int argc, char **argv)
     }
     
     // Initialize frame number and start time;
-    int frames = 0;
-    float start = glfwGetTime();
+    //int frames = 0;
+    //float start = glfwGetTime();
     
     // Array to store ray calculation count data
     GLfloat* rayRateArray = new GLfloat[WIDTH * MUL * HEIGHT * MUL];
@@ -354,15 +355,17 @@ int main(int argc, char **argv)
     
     // Build and compile our shader programs
     // On Mac OS with Xcode we use absolute path, while on other IDE relative path is allowed
-    Shader firstPassShader("/Users/moderato/Desktop/EEC277/EEC277_Project/EEC277_Project/first_pass.vs",
-                           "/Users/moderato/Desktop/EEC277/EEC277_Project/EEC277_Project/first_pass.frag");
-    Shader secondPassShader("/Users/moderato/Desktop/EEC277/EEC277_Project/EEC277_Project/second_pass.vs",
-                            "/Users/moderato/Desktop/EEC277/EEC277_Project/EEC277_Project/second_pass.frag");
+    Shader firstPassShader("first_pass.vs",
+                           "first_pass.frag");
+    Shader secondPassShader("second_pass.vs",
+                            "second_pass.frag");
     
     
     std::cout << "Tested on " << glGetString(GL_RENDERER) << 
                 " using " << glGetString(GL_VERSION) << std::endl;
-
+    
+    double lastTime = glfwGetTime();
+    int nbFrames = 0;
     while (!glfwWindowShouldClose(window)) {
         GLfloat current = glfwGetTime();
         deltaTime = current - lastFrame;
@@ -387,14 +390,7 @@ int main(int argc, char **argv)
         firstPassShader.Use();
         glBindVertexArray(first_pass_VAO);
         
-        // Create camera transformations
-        glm::mat4 view;
-        view = camera.GetViewMatrix();
-        glm::mat4 projection = glm::perspective(camera.Zoom, (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
-        
         // Pass uniforms to first pass fragment shader
-        glUniformMatrix4fv(glGetUniformLocation(firstPassShader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-        glUniformMatrix4fv(glGetUniformLocation(firstPassShader.Program, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniform3f(glGetUniformLocation(firstPassShader.Program, "resolution"), WIDTH * MUL, HEIGHT * MUL, 0);
         glUniform1i(glGetUniformLocation(firstPassShader.Program, "num_spheres"), testStruct.nums);
         glUniform1i(glGetUniformLocation(firstPassShader.Program, "iterations"), testStruct.iterations);
@@ -403,6 +399,9 @@ int main(int argc, char **argv)
                     -1.0f + 4.0f * cos(current) * testStruct.lightMoving, 1.5f, 1.0f + 4.0f * sin(current) * testStruct.lightMoving);
         glUniform1i(glGetUniformLocation(firstPassShader.Program, "withPlane"), testStruct.withPlane);
         glUniform1i(glGetUniformLocation(firstPassShader.Program, "canRefract"), testStruct.canRefract);
+        double xpos, ypos;
+        glfwGetCursorPos(window, &xpos, &ypos);
+        glUniform2f(glGetUniformLocation(firstPassShader.Program, "cursor"), xpos, ypos);
         
         // Pass sphere array info to fragment shader
         for(int i = 0; i < testStruct.nums; i++) {
@@ -410,7 +409,7 @@ int main(int argc, char **argv)
             glUniform4f(glGetUniformLocation(firstPassShader.Program, (sphere + ".position_r").c_str()),
                         sp_pos[i].x, sp_pos[i].y, sp_pos[i].z, 0.5f);
             glUniform3f(glGetUniformLocation(firstPassShader.Program, (sphere + ".material.color").c_str()), 0.2f, 0.3, 0.8f);
-            glUniform2f(glGetUniformLocation(firstPassShader.Program, (sphere + ".material.diff_spec").c_str()), 1.0f, 0.5f);
+            glUniform3f(glGetUniformLocation(firstPassShader.Program, (sphere + ".material.diff_spec_ref").c_str()), 1.0f, 0.5f, 1.1);
         }
         
         // Draw two triangle to cover the window and detach vertex array
@@ -448,9 +447,15 @@ int main(int argc, char **argv)
         }
 
         // Calculate frame rates
-        frames++;
-        float fps = frames * 1.0f / (glfwGetTime() - start);
-        std::cout << fps << " frames per second" << std::endl;
+	     double currentTime = glfwGetTime();
+	     nbFrames++;
+	     if ( currentTime - lastTime >= 5.0f ){ // If last prinf() was more than 1 sec ago
+             // printf and reset timer
+             float fps = nbFrames/(currentTime - lastTime);
+             std::cout << fps << " frames per second" << std::endl;
+             nbFrames = 0.0;
+             lastTime += (currentTime - lastTime);
+	     }
         
         // Swap the screen buffers
         glfwSwapBuffers(window);
@@ -470,3 +475,4 @@ int main(int argc, char **argv)
     glfwTerminate();
     return 0;
 }
+

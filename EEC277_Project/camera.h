@@ -88,7 +88,7 @@ public:
         yoffset *= this->MouseSensitivity;
 
         this->Yaw   += xoffset;
-        this->Pitch += yoffset;
+        //this->Pitch += yoffset;
 
         // Make sure that when pitch is out of bounds, screen doesn't get flipped
         if (constrainPitch)
