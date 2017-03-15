@@ -41,6 +41,8 @@ uniform int       iterations;            // Bouncing limit
 uniform vec4      cursor;                // mouse pixel coords
 uniform mat4      projection;            // Projection Matrix
 uniform mat4      view;                  // View Matrix
+uniform bool      withPlane;             // Has a plane or not
+uniform bool      canRefract;            // Enable refraction
 
 
 layout(location = 0) out vec4 color;
@@ -55,7 +57,7 @@ const float MAX_LEN = 2147483647.0;
 const Intersect miss = Intersect(MAX_LEN, vec3(0.0), vec3(0.0), Material(vec3(0.0), vec3(0.0)));
 Light light = Light(vec3(1.0, 1.0, 1.0) * intensity, normalize(vec3(0.0, 1.0, -3.0))); // Fixed light
 //Light light = Light(vec3(1.0, 1.0, 1.0) * intensity, normalize(light_direction)); // Moving light
-float rayCount = 0;
+float rayCount = 0; // Ray calculation count for this pixel
 
 
 Intersect intersect(Ray ray, Sphere sphere) {
@@ -78,8 +80,10 @@ Intersect intersect(Ray ray, Plane plane) {
 
 Intersect trace(Ray ray) {
     Intersect intersection = miss;
-    Intersect plane = intersect(ray, Plane(vec3(0, 1, 0), Material(vec3(1.0, 1.0, 1.0), vec3(0.5, 0.5, 0.0))));
-    if (plane.material.diff_spec_ref[0] > 0.0 || plane.material.diff_spec_ref[1] > 0.0) { intersection = plane; }
+    if (withPlane) {
+        Intersect plane = intersect(ray, Plane(vec3(0, 1, 0), Material(vec3(1.0, 1.0, 1.0), vec3(0.5, 0.5, 0.0))));
+        if (length(plane.material.diff_spec_ref)> 0.0) { intersection = plane; }
+    }
     for (int i = 0; i < num_spheres; i++) {
         if(dot(ray.direction, spheres[i].position_r.xyz - ray.origin) >= 0) { // Prune those spheres at the back of the ray origin
             Intersect sphere = intersect(ray, spheres[i]);
@@ -90,21 +94,50 @@ Intersect trace(Ray ray) {
     return intersection;
 }
 
+/*vec3 singleray(Ray ray){
+rayCount += rayCount + 1.0f;
+Intersect hit = trace(ray);
+if (length(hit.material.diff_spec_ref)> 0.0) { // If hit		        
+
+			if (trace(Ray(ray.origin + hit.len * ray.direction + epsilon * light.direction, light.direction)) == miss) {
+		        color += clamp(dot(hit.normal, light.direction), 0.0, 1.0) * light.color
+		        * hit.material.color * hit.material.diff_spec_ref[0]
+		        * (1.0 - fresnel) * mask;
+		        // 1st line : vertical light intensity on surface
+		        // 2nd line : diffuse factor for each color
+		        // 3rd line : old mask * transmittance
+		    }
+		    
+		} else {
+		    
+		    vec3 spotlight = vec3(1e6) * pow(abs(dot(ray.direction, light.direction)), 250.0);
+		    color += mask* (ambient + spotlight);		    
+		}
+
+
+}*/
+
+
 vec3 radiance(Ray ray) {
-    vec3 color = vec3(0.0), fresnel = vec3(0.0); // Fresnel factor:
+    vec3 color = vec3(0.0);
+    vec3 fresnel = vec3(0.0); 
+    vec3 fresnel2 = vec3(0.0); 
+    vec3 fresnel3 = vec3(0.0); 
     vec3 mask = vec3(1.0);
-    vec3 mask_refract =vec3(1.0);
+    vec3 mask2 = vec3(1.0);
+
+
     
     for (int i = 0; i <= iterations; ++i) {
         Intersect hit = trace(ray);
         if (length(hit.material.diff_spec_ref)> 0.0) { // If hit
-            
+            //----------------------------------------------fresnel for the first hit
             vec3 r0 = hit.material.color * hit.material.diff_spec_ref[1]; // Specular = R0; r0 is for each color
             float hv = clamp(dot(hit.normal, -ray.direction), 0.0, 1.0); // cos(theta)
             fresnel = r0 + (1.0 - r0) * pow(1.0 - hv, 5.0); // Schlick approximation: fresnel = R0 + (1 - R0) * (1 - cos(theta))^5
             mask *= fresnel; // Accumulated color mask
             
-           if(hit.material.diff_spec_ref[2]>0.0){ // If refractive
+           if(canRefract && hit.material.diff_spec_ref[2]!=0.0){ // If refractive
 
 	    vec3 enter = ray.origin + hit.len * ray.direction; // enter : where ray hit the sphere
             vec3 refraction_in = refract(ray.direction, hit.normal, hit.material.diff_spec_ref[2]);
@@ -124,29 +157,27 @@ vec3 radiance(Ray ray) {
 		        * (1.0 - fresnel) * mask;
 		        // 1st line : vertical light intensity on surface
 		        // 2nd line : diffuse factor for each color
-		        // 3rd line : old mask * transmittance
+		        // 3rd line : transmittance * old mask
 		    }
 		    
 		} else {
-		    
-		    vec3 spotlight = vec3(1e6) * pow(abs(dot(ray.direction, light.direction)), 250.0);
-		    color += mask* (ambient + spotlight);		    
+		    color += mask* ambient ;		    
 		}
                 //-------------------------------------------------------------end of reflection ray for half transparent sphere
-            //----------------------------------------------fresenl for exiting sphere 
-            vec3 r0 = hit.material.color * hit.material.diff_spec_ref[1]; // Specular = R0; r0 is for each color
+
+            //----------------------------------------------fresnel(2) for exiting sphere 
 	    float hv = clamp(dot((hit.center-exit)/spheres[0].position_r.w, -refraction_in), 0.0, 1.0); // cos(theta)
-	    fresnel = r0 + (1.0 - r0) * pow(1.0 - hv, 5.0); // Schlick approximation: fresnel = R0 + (1 - R0) * (1 - cos(theta))^5
-	    mask *= fresnel; // Accumulated color mask
+	    fresnel2 = r0 + (1.0 - r0) * pow(1.0 - hv, 5.0); // Schlick approximation: fresnel = R0 + (1 - R0) * (1 - cos(theta))^5
+	    mask *= fresnel2; // Accumulated color mask
 
                 //--------------------------------------------reflection for refracted ray inside the sphere (one ray, no iteration)
                 vec3 reflect_inner = reflect(refraction_in, (hit.center-exit)/spheres[0].position_r.w); // inner reflection
                 vec3 exit2 = reflect_inner*(dot((hit.center-enter),refraction_in))*2; //point where inner reflection exit sphere // same length as the first refraction
 		vec3 refraction_out2 = refract(reflect_inner, (hit.center-exit2)/spheres[0].position_r.w, 1/hit.material.diff_spec_ref[2]);//direction
-                //----------------------------------------------fresenl for the refracted and reflected ray exiting sphere
+                //----------------------------------------------fresnel(3) for the refracted and reflected ray exiting sphere
 	        hv = clamp(dot((hit.center-exit2)/spheres[0].position_r.w, -reflect_inner), 0.0, 1.0); // cos(theta)
-	        fresnel = r0 + (1.0 - r0) * pow(1.0 - hv, 5.0); // Schlick approximation: fresnel = R0 + (1 - R0) * (1 - cos(theta))^5
-                mask_refract = mask * fresnel; // Accumulated color mask
+	        fresnel3 = r0 + (1.0 - r0) * pow(1.0 - hv, 5.0); // Schlick approximation: fresnel = R0 + (1 - R0) * (1 - cos(theta))^5
+                mask2 = mask * fresnel3; // Accumulated color mask. mask2 specificlly for this single ray
 		Ray ray_reflect2 = Ray(exit2 + epsilon * refraction_out2, refraction_out2);
 		rayCount += rayCount + 1.0f;
 	        Intersect hit_reflect2 = trace(ray_reflect2);
@@ -155,49 +186,48 @@ vec3 radiance(Ray ray) {
 			if (trace(Ray(ray_reflect2.origin + hit_reflect2.len * ray_reflect.direction + epsilon * light.direction, light.direction)) == miss) {
 		        color += clamp(dot(hit_reflect2.normal, light.direction), 0.0, 1.0) * light.color
 		        * hit_reflect2.material.color * hit_reflect2.material.diff_spec_ref[0]
-		        * (1.0 - fresnel) * mask_refract;
+		        * (1.0 - fresnel3) * mask2;
 		        // 1st line : vertical light intensity on surface
 		        // 2nd line : diffuse factor for each color
-		        // 3rd line : old mask * transmittance
+		        // 3rd line : transmittance * old mask
 		    }
 		    
 		} else {
-		    
-		    vec3 spotlight = vec3(1e6) * pow(abs(dot(ray.direction, light.direction)), 250.0);
-		    color += mask_refract * (ambient + spotlight);		    
+		    color += mask2 * ambient;		    
 		} 
                 //-------------------------------------------------------------end of reflection for refracted ray inside the sphere 
 
             
-            ray = Ray(exit + epsilon * refraction_out, refraction_out);
+            ray = Ray(exit + epsilon * refraction_out, refraction_out);  // next ray: refracted
             rayCount += rayCount + 1.0f;
-	    color += mask * hit.material.color * fresnel; // material inner color * transmittance
+	    color += mask *  fresnel2; // material inner color * transmittance
 
             if(length(mask) < 0.0003) break;
 
             }
-            else{ 
+            else{ // not refractive 
 		if (trace(Ray(ray.origin + hit.len * ray.direction + epsilon * light.direction, light.direction)) == miss) {
                 color += clamp(dot(hit.normal, light.direction), 0.0, 1.0) * light.color
                 * hit.material.color * hit.material.diff_spec_ref[0]
                 * (1.0 - fresnel) * mask / fresnel;
                 // 1st line : vertical light intensity on surface
                 // 2nd line : diffuse factor for each color
-                // 3rd line : old mask * transmittance
+                // 3rd line : transmittance * old mask
             }
             
             if(length(mask) < 0.0003) break;
             
             vec3 reflection = reflect(ray.direction, hit.normal);
-            ray = Ray(ray.origin + hit.len * ray.direction + epsilon * reflection, reflection);
+            ray = Ray(ray.origin + hit.len * ray.direction + epsilon * reflection, reflection);// next ray: reflected
             rayCount += rayCount + 1.0f;
             }
 
             
         } else {
             
-            vec3 spotlight = vec3(1e6) * pow(abs(dot(ray.direction, light.direction)), 250.0);
-            color += mask * (ambient + spotlight);
+            vec3 spotlight = vec3(1e6) * pow(abs(dot(ray.direction, light.direction)), 150.0);
+            color += mask * (ambient + spotlight);   //addtion light 
+// we didn't add this light in the refraction because it would cause too many obvious artifact spots, due to the lack of anti-aliasing
             break;
             
         }
