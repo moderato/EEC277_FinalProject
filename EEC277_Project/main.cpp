@@ -26,7 +26,7 @@
 #define MAX_SPHERE_NUM       339    // Maximum number of spheres allowed under 4096 uniform constrains
 #define MAX_ITERATION_NUM    16
 #define INIT_SPHERE_NUM      125
-#define INIT_ITERATION_NUM   6
+#define INIT_ITERATION_NUM   10
 
 // Define a struct storing test parameters
 typedef struct {
@@ -37,6 +37,10 @@ typedef struct {
     bool lightMoving;
     bool canRefract;
     bool turnOffRayCalculation;
+    
+    bool doNumberTest;
+    bool doIterationTest;
+    bool doDistanceTest;
 } TestStruct;
 
 TestStruct testStruct;
@@ -57,13 +61,21 @@ GLfloat lastFrame = 0.0f;   // Time of last frame
 // Sphere array
 glm::vec3 sp_pos[MAX_SPHERE_NUM];
 
+// Test parameter arrays
+const int numbers[] = {1, 8, 27, 64, 125, 216};
+const int iterations[] = {2, 4, 6, 8, 10, 12, 14, 16};
+const float distances[] = {2.0f, 5.0f, 8.0f, 11.0f};
+
 const char usageString[] = {"\
 [-n]\tSet number of spheres\n \
 [-i]\tSet number of iterations\n \
 [-p]\tAdd a plane to the scene\n \
 [-m]\tEnable light movement\n \
 [-r]\tEnable refraction calculation\n \
-[-o]\tTurn off ray rate calculation\n\n"};
+[-o]\tTurn off ray rate calculation\n \
+[-nt]\tDo number test \
+[-it]\tDo iteration test \
+[-dt]\tDo distance test\n\n"};
 
 void usage(const char *progName)
 {
@@ -103,6 +115,21 @@ void parseArgs(int argc, char **argv, TestStruct *testStruct) {
         else if (strcmp(argv[i],"-o") == 0) // Turn off ray calculation
         {
             testStruct->turnOffRayCalculation = true;
+        }
+        else if (strcmp(argv[i],"-nt") == 0) // Do number testing
+        {
+            if(!testStruct->doIterationTest && !testStruct->doDistanceTest)
+                testStruct->doNumberTest = true;
+        }
+        else if (strcmp(argv[i],"-it") == 0) // Do iteration testing
+        {
+            if(!testStruct->doNumberTest && !testStruct->doDistanceTest)
+                testStruct->doIterationTest = true;
+        }
+        else if (strcmp(argv[i],"-dt") == 0) // Do distance testing
+        {
+            if(!testStruct->doNumberTest && !testStruct->doIterationTest)
+                testStruct->doDistanceTest = true;
         }
         else
         {
@@ -199,13 +226,16 @@ int main(int argc, char **argv)
     // Initialize GLEW to setup the OpenGL Function pointers
     glewInit();
     
+    // Initialize parameters and parse arguments
     testStruct.nums = INIT_SPHERE_NUM;
     testStruct.iterations = INIT_ITERATION_NUM;
     testStruct.withPlane = false;
     testStruct.lightMoving = false;
     testStruct.canRefract = false;
     testStruct.turnOffRayCalculation = false;
-    
+    testStruct.doNumberTest = false;
+    testStruct.doDistanceTest = false;
+    testStruct.doIterationTest = false;
     parseArgs(argc, argv, &testStruct);
     
     if(testStruct.nums > MAX_SPHERE_NUM) { // Check if sphere number exceeds limit
@@ -333,8 +363,7 @@ int main(int argc, char **argv)
     std::cout << "Tested on " << glGetString(GL_RENDERER) << 
                 " using " << glGetString(GL_VERSION) << std::endl;
 
-    while (!glfwWindowShouldClose(window))
-    {
+    while (!glfwWindowShouldClose(window)) {
         GLfloat current = glfwGetTime();
         deltaTime = current - lastFrame;
         lastFrame = current;
