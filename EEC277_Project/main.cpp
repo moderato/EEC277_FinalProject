@@ -3,6 +3,7 @@
 #include <iostream>
 #include <cmath>
 #include <string>
+#include <array>
 
 #define GLEW_STATIC
 #include <GL/glew.h>
@@ -27,6 +28,7 @@
 #define MAX_ITERATION_NUM    16
 #define INIT_SPHERE_NUM      125
 #define INIT_ITERATION_NUM   6
+#define INIT_DISTANCE        18.0f
 
 // Define a struct storing test parameters
 typedef struct {
@@ -45,10 +47,10 @@ typedef struct {
 TestStruct testStruct;
 
 // Window dimensions
-const GLuint WIDTH = 800, HEIGHT = 600;
+const GLuint WIDTH = 1024, HEIGHT = 768;
 
 // Camera
-Camera  camera(glm::vec3(0.0f, 4.0f, 20.0f));
+Camera  camera(glm::vec3(0.0f, 4.0f, INIT_DISTANCE));
 GLfloat lastX  =  WIDTH;
 GLfloat lastY  =  HEIGHT;
 bool keys[1024];
@@ -63,7 +65,7 @@ glm::vec3 sp_pos[MAX_SPHERE_NUM];
 // Test parameter arrays
 const int numbers[] = {1, 8, 27, 64, 125, 216};
 const int iterations[] = {2, 4, 6, 8, 10, 12, 14, 16};
-const float distances[] = {2.0f, 5.0f, 8.0f, 11.0f};
+const float distances[] = {18.0f, 20.0f, 22.0f, 24.0f, 26.0f, 28.0f};
 
 const char usageString[] = {"\
 [-n]\tSet number of spheres\n \
@@ -78,12 +80,12 @@ const char usageString[] = {"\
 
 void usage(const char *progName)
 {
-  fprintf(stderr," %s usage:\n %s \n", progName, usageString);
-  fflush(stderr);
+    fprintf(stderr," %s usage:\n %s \n", progName, usageString);
+    fflush(stderr);
 }
 
 void parseArgs(int argc, char **argv, TestStruct *testStruct) {
-    int i=1;
+    int i = 1;
     argc--;
     while (argc > 0)
     {
@@ -115,18 +117,21 @@ void parseArgs(int argc, char **argv, TestStruct *testStruct) {
         {
             testStruct->turnOffRayCalculation = true;
         }
-	else if (strcmp(argv[i],"-nt") == 0) // Do number testing
+        else if (strcmp(argv[i],"-nt") == 0) // Do number testing
         {
+            // Do one test at a time
             if(!testStruct->doIterationTest && !testStruct->doDistanceTest)
                 testStruct->doNumberTest = true;
         }
         else if (strcmp(argv[i],"-it") == 0) // Do iteration testing
         {
+            // Do one test at a time
             if(!testStruct->doNumberTest && !testStruct->doDistanceTest)
                 testStruct->doIterationTest = true;
         }
         else if (strcmp(argv[i],"-dt") == 0) // Do distance testing
         {
+            // Do one test at a time
             if(!testStruct->doNumberTest && !testStruct->doIterationTest)
                 testStruct->doDistanceTest = true;
         }
@@ -232,12 +237,21 @@ int main(int argc, char **argv)
     testStruct.lightMoving = false;
     testStruct.canRefract = false;
     testStruct.turnOffRayCalculation = false;
-
     testStruct.doNumberTest = false;
     testStruct.doDistanceTest = false;
     testStruct.doIterationTest = false;
     
     parseArgs(argc, argv, &testStruct);
+    
+    int num_of_test = 0;
+
+    if(testStruct.doNumberTest) {
+        testStruct.nums = numbers[num_of_test];
+    }
+    
+    if(testStruct.doIterationTest) {
+        testStruct.iterations = iterations[num_of_test];
+    }
     
     if(testStruct.nums > MAX_SPHERE_NUM) { // Check if sphere number exceeds limit
         fprintf(stderr, "Too many spheres!\n");
@@ -246,11 +260,6 @@ int main(int argc, char **argv)
     if(testStruct.iterations > MAX_ITERATION_NUM) { // Check if sphere number exceeds limit
         fprintf(stderr, "Too many iterations!\n");
         exit(EXIT_FAILURE);
-    }
-    
-    // Positions for each spheres
-    for(int i = 0; i < testStruct.nums; i++) {
-        sp_pos[i] = glm::vec3(-3.0f + 1.5f * (i % 5), 0.5f + 1.5f * (i / 25), 0.0f + 1.5f * ((i % 25) / 5));
     }
     
     // Initialize frame number and start time;
@@ -366,6 +375,14 @@ int main(int argc, char **argv)
     
     double lastTime = glfwGetTime();
     int nbFrames = 0;
+    
+run:
+    // Positions for each spheres
+    int scale = int(cbrt(testStruct.nums));
+    for(int i = 0; i < MAX_SPHERE_NUM; i++) {
+        sp_pos[i] = glm::vec3(-3.0f + 1.5f * (i % scale), 0.5f + 1.5f * (i / (scale * scale)), 0.0f + 1.5f * ((i % (scale * scale)) / scale));
+    }
+    
     while (!glfwWindowShouldClose(window)) {
         GLfloat current = glfwGetTime();
         deltaTime = current - lastFrame;
@@ -445,20 +462,37 @@ int main(int argc, char **argv)
             }
             std::cout << int(sum * 255) << " ray calculations per frame"<< std::endl;
         }
-
-        // Calculate frame rates
-	     double currentTime = glfwGetTime();
-	     nbFrames++;
-	     if ( currentTime - lastTime >= 5.0f ){ // If last prinf() was more than 1 sec ago
-             // printf and reset timer
-             float fps = nbFrames/(currentTime - lastTime);
-             std::cout << fps << " frames per second" << std::endl;
-             nbFrames = 0.0;
-             lastTime += (currentTime - lastTime);
-	     }
         
         // Swap the screen buffers
         glfwSwapBuffers(window);
+
+        // Calculate frame rates
+        double currentTime = glfwGetTime();
+        nbFrames++;
+        if ( currentTime - lastTime >= 5.0f ){ // If last prinf() was more than 1 sec ago
+            // printf and reset timer
+            float fps = nbFrames/(currentTime - lastTime);
+            std::cout << fps << " frames per second" << std::endl;
+            nbFrames = 0;
+            lastTime = currentTime;
+            if(testStruct.doDistanceTest || testStruct.doIterationTest || testStruct.doNumberTest)
+                break;
+        }
+    }
+    
+    if(testStruct.doNumberTest && num_of_test + 1 < 6) {
+        testStruct.nums = numbers[++num_of_test];
+        goto run;
+    }
+    
+    if(testStruct.doIterationTest && num_of_test + 1 < 8) {
+        testStruct.iterations = iterations[++num_of_test];
+        goto run;
+    }
+    
+    if(testStruct.doDistanceTest && num_of_test + 1 < 5) {
+        camera.Position.z = distances[++num_of_test];
+        goto run;
     }
     
     // Delete all arrays and buffers and free pointers
