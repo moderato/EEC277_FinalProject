@@ -33,17 +33,15 @@ struct Plane {
 };
 
 uniform int       num_spheres;           // Sphere number
-uniform Sphere    spheres[339];          // Sphere Array
+uniform Sphere    spheres[338];          // Sphere Array
 uniform vec3      resolution;            // Viewport resolution (in pixels)
 uniform vec3      viewPos;               // View Position
 uniform vec3      light_direction;       // Light direction for static/moving light
+uniform mat3      rot;
 uniform int       iterations;            // Bouncing limit
 uniform vec2      cursor;                // mouse pixel coords
-uniform mat4      projection;            // Projection Matrix
-uniform mat4      view;                  // View Matrix
 uniform bool      withPlane;             // Has a plane or not
 uniform bool      canRefract;            // Enable refraction
-
 
 layout(location = 0) out vec4 color;
 layout(location = 1) out vec4 totalRay;
@@ -58,7 +56,6 @@ const Intersect miss = Intersect(MAX_LEN, vec3(0.0), vec3(0.0), Material(vec3(0.
 Light light = Light(vec3(1.0, 1.0, 1.0) * intensity, normalize(vec3(0.0, 1.0, -3.0))); // Fixed light
 //Light light = Light(vec3(1.0, 1.0, 1.0) * intensity, normalize(light_direction)); // Moving light
 float rayCount = 0; // Ray calculation count for this pixel
-
 
 Intersect intersect(Ray ray, Sphere sphere) {
     vec3 oc = sphere.position_r.xyz - ray.origin;
@@ -212,12 +209,9 @@ vec3 radiance(Ray ray) {
 void mainImage(out vec4 fragColor, out vec4 count, in vec2 fragCoord) {
     vec2 uv = fragCoord.xy / resolution.xy - vec2(0.5);
     uv.x *= resolution.x / resolution.y;
-    vec2 mouse = (cursor.xy/resolution.xy*1.3089-vec2(0.65))*vec2(resolution.x/resolution.y,1.0)*2.0;
-    mouse.y = max(mouse.y,-0.5);
-    mat3 rot = mat3(vec3(sin(mouse.x+3.14159/2.0),0,sin(mouse.x)),vec3(0,1,0),vec3(sin(mouse.x+3.14159),0,sin(mouse.x+3.14159/2.0)));
    
 //    Ray ray = Ray(viewPos, normalize(mat3(projection * view) * vec3(uv.x, uv.y, 1.0f))); // With projection and view
-    Ray ray = Ray(viewPos, rot*normalize(vec3(uv.x, uv.y, -1.0)));
+    Ray ray = Ray(viewPos, rot * normalize(vec3(uv.x, uv.y, -1.0)));
     
     fragColor = vec4(pow(radiance(ray) * exposure, vec3(1.0f / gamma)), 1.0f);
     count = vec4(rayCount / 255.0f, 0.0f, 0.0f, 1.0f); // Put ray calculation count in red color of output vector
