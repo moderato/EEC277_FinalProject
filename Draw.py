@@ -42,6 +42,9 @@ for name in files:
 		ax1.set_ylabel("Frame Rate")
 		ax2.set_ylabel("Ray Count")
 
+		ax1.set_xticklabels(x) 
+		plt.setp(ax1.xaxis.get_majorticklabels(), rotation=0)
+
 		ax1.yaxis.grid()
 		ax1.legend(loc=1, prop={'size':12})
 		ax2.legend(loc=2, prop={'size':12})
@@ -73,6 +76,9 @@ for name in files:
 		ax1.set_ylabel("Frame Rate")
 		ax2.set_ylabel("Ray Count")
 
+		ax1.set_xticklabels(x) 
+		plt.setp(ax1.xaxis.get_majorticklabels(), rotation=0)
+
 		ax1.yaxis.grid()
 		ax1.legend(loc=1, prop={'size':12})
 		ax2.legend(loc=9, prop={'size':12})
@@ -102,6 +108,9 @@ for name in files:
 
 		ax1.set_ylabel("Frame Rate")
 		ax2.set_ylabel("Ray Count")
+
+		ax1.set_xticklabels(x) 
+		plt.setp(ax1.xaxis.get_majorticklabels(), rotation=0)
 
 		ax1.yaxis.grid()
 		ax1.legend(loc=1, prop={'size':12})
