@@ -37,9 +37,8 @@ uniform Sphere    spheres[338];          // Sphere Array
 uniform vec3      resolution;            // Viewport resolution (in pixels)
 uniform vec3      viewPos;               // View Position
 uniform vec3      light_direction;       // Light direction for static/moving light
-uniform mat3      rot;
+uniform mat3      rot;                   // Rotation Matrix
 uniform int       iterations;            // Bouncing limit
-uniform vec2      cursor;                // mouse pixel coords
 uniform bool      withPlane;             // Has a plane or not
 uniform bool      canRefract;            // Enable refraction
 
@@ -54,7 +53,7 @@ const vec3 ambient = vec3(0.6, 0.8, 1.0) * intensity / gamma;
 const float MAX_LEN = 2147483647.0;
 const Intersect miss = Intersect(MAX_LEN, vec3(0.0), vec3(0.0), Material(vec3(0.0), vec3(0.0)));
 Light light = Light(vec3(1.0, 1.0, 1.0) * intensity, normalize(light_direction)); // Light source, can be fixed or moving
-float rayCount = 0; // Ray calculation count for this pixel
+float rayCount = 1.0f; // Ray calculation count for this pixel
 
 Intersect intersect(Ray ray, Sphere sphere) {
     vec3 oc = sphere.position_r.xyz - ray.origin;
@@ -174,7 +173,7 @@ vec3 radiance(Ray ray) {
                 rayCount += rayCount + 1.0f;
                 color += mask *  fresnel2; // material inner color * transmittance
 
-                if(length(mask) < 0.0003) break;
+                if(length(mask) < 0.03) break;
 
             } else { // not refractive
                 if (trace(Ray(ray.origin + hit.len * ray.direction + epsilon * light.direction, light.direction)) == miss) {
@@ -186,7 +185,7 @@ vec3 radiance(Ray ray) {
                     // 3rd line : transmittance * old mask
                 }
             
-                if(length(mask) < 0.0003) break;
+                if(length(mask) < 0.03) break;
             
                 vec3 reflection = reflect(ray.direction, hit.normal);
                 ray = Ray(ray.origin + hit.len * ray.direction + epsilon * reflection, reflection);// next ray: reflected
@@ -196,7 +195,7 @@ vec3 radiance(Ray ray) {
         } else { // not hit
             
             vec3 spotlight = vec3(1e6) * pow(abs(dot(ray.direction, light.direction)), 250.0);
-            color += mask * (ambient + spotlight);   //addtion light 
+            color += mask * (ambient + spotlight);   //addition light 
             // we didn't add this light in the refraction because it would cause too many obvious artifact spots, due to the lack of anti-aliasing
             break;
             

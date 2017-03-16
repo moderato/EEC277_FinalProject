@@ -28,7 +28,7 @@
 #define MAX_ITERATION_NUM    16
 #define INIT_SPHERE_NUM      125
 #define INIT_ITERATION_NUM   6
-#define INIT_DISTANCE        14.0f
+#define INIT_DISTANCE        10.0f
 #define PI                   3.14159
 
 // Define a struct storing test parameters
@@ -68,7 +68,7 @@ glm::vec3 sp_pos[MAX_SPHERE_NUM];
 // Test parameter arrays
 const int numbers[] = {1, 8, 27, 64, 125, 216};
 const int iterations[] = {2, 4, 6, 8, 10, 12, 14, 16};
-const float distances[] = {14.0f, 16.0f, 18.0f, 20.0f, 22.0f, 24.0f, 26.0f, 28.0f};
+const float distances[] = {10.0f, 13.0f, 16.0f, 19.0f, 22.0f, 25.0f, 28.0f, 31.0f};
 
 const char usageString[] = {"\
 [-n]\tSet number of spheres\n \
@@ -251,6 +251,7 @@ int main(int argc, char **argv)
     testStruct.doNumberTest = false;
     testStruct.doDistanceTest = false;
     testStruct.doIterationTest = false;
+    testStruct.doStandardTest = false;
     
     parseArgs(argc, argv, &testStruct);
     
@@ -276,7 +277,7 @@ int main(int argc, char **argv)
     // Standard Test:
     // 125 Spheres
     // 6 Iterations
-    // Camera distance 14
+    // Camera distance 10
     // Has plane
     // Light moving
     // Can Refract
@@ -345,7 +346,7 @@ int main(int argc, char **argv)
     glGenFramebuffers(1, &FBO);
     glBindFramebuffer(GL_FRAMEBUFFER, FBO);
     
-    // Generate two textures for drawing and ray calculation count data
+    // Generate two textures for drawing and ray count data
     GLuint image, data;
     glGenTextures(1, &image);
     glGenTextures(1, &data);
@@ -397,7 +398,6 @@ int main(int argc, char **argv)
     double lastTime = glfwGetTime();
     int nbFrames = 0;
     
-    
     std::string filename = "";
     if(testStruct.doNumberTest)
         filename += "NumberTest.txt";
@@ -408,13 +408,17 @@ int main(int argc, char **argv)
     else if(testStruct.doStandardTest)
         filename += "Standard.txt";
     
-    FILE *df = nullptr;
-    if(testStruct.doNumberTest || testStruct.doStandardTest || testStruct.doDistanceTest || testStruct.doIterationTest)
+    std::cout << "here" << std::endl;
+    
+    FILE *df;
+    if(testStruct.doNumberTest || testStruct.doStandardTest || testStruct.doDistanceTest || testStruct.doIterationTest) {
+        std::cout << "there" << std::endl;
         df = fopen(filename.c_str(),"w");
         if(testStruct.doStandardTest)
-            fprintf(df, "Spheres\tIterations\tDistance\tPlane\tLight Moving\tRefraction\tFrame Rate\tRay Calculation\n");
+            fprintf(df, "Spheres\tIterations\tDistance\tPlane\tLight Moving\tRefraction\tFrame Rate\tRay Count\n");
         else
-            fprintf(df, "Spheres\tIterations\tDistance\tFrame Rate\tRay Calculation\n");
+            fprintf(df, "Spheres\tIterations\tDistance\tFrame Rate\tRay Count\n");
+    }
     
 run:
     // Positions for each spheres
@@ -440,7 +444,7 @@ run:
         glfwPollEvents();
         do_movement();
         
-        // Sum of ray calculation
+        // Sum of ray count
         float sum = 0;
         
         /******************** First pass. Render to two textures attached to FBO. ********************/
@@ -476,9 +480,14 @@ run:
         glfwGetCursorPos(window, &xpos, &ypos);
         glUniform2f(glGetUniformLocation(firstPassShader.Program, "cursor"), xpos, ypos);
 
-        //Cursor rotation matrix calculate//1.3089 and 0.65 are mearsured number sutable for my machine
+        //Cursor rotation matrix calculate
+        //1.3089 and 0.65 are mearsured number sutable for my machine
         glm::vec2 mouse = (glm::vec2(xpos, ypos) / glm::vec2(WIDTH * MUL, HEIGHT * MUL) * glm::vec2(2.233) - glm::vec2(0.74)) * glm::vec2(WIDTH * MUL / (HEIGHT * MUL), 1.0) * glm::vec2(2.0);
-        glm::mat3 rot = glm::mat3(glm::vec3(sin(mouse.x + PI / 2.0), 0, sin(mouse.x)),glm::vec3(0, 1, 0),glm::vec3(sin(mouse.x + PI), 0, sin(mouse.x + PI / 2.0)));
+        glm::mat3 rot;
+        if(testStruct.doStandardTest || testStruct.doIterationTest || testStruct.doDistanceTest || testStruct.doNumberTest)
+            rot = glm::mat3(); // Identity Matrix
+        else
+            rot = glm::mat3(glm::vec3(sin(mouse.x + PI / 2.0), 0, sin(mouse.x)),glm::vec3(0, 1, 0),glm::vec3(sin(mouse.x + PI), 0, sin(mouse.x + PI / 2.0)));
         glUniformMatrix3fv(glGetUniformLocation(firstPassShader.Program, "rot"), 1, GL_FALSE, glm::value_ptr(rot));
 
         // Pass sphere array info to fragment shader
@@ -520,8 +529,10 @@ run:
             for(int i = 0; i < WIDTH * HEIGHT * MUL * MUL; i++) {
                 sum += rayRateArray[i];
             }
+            
+            // Only print when 
             if(!testStruct.doStandardTest && !testStruct.doNumberTest && !testStruct.doDistanceTest && !testStruct.doIterationTest)
-                std::cout << int(sum * 255) << " ray calculations per frame"<< std::endl;
+                std::cout << int(sum * 255) << " rays per frame"<< std::endl;
         }
         
         // Swap the screen buffers
@@ -540,7 +551,7 @@ run:
             
             if(testStruct.doDistanceTest || testStruct.doIterationTest || testStruct.doNumberTest || testStruct.doStandardTest) {
                 if(testStruct.doStandardTest)
-                    fprintf(df, "%d\t%d\t%f\t%s\t%s\t%s\t%f\t%d\n", testStruct.nums, testStruct.iterations, camera.Position.z, testStruct.withPlane ? "T" : "F", testStruct.lightMoving ? "T" : "F", testStruct.canRefract ? "T" : "F", fps, int(sum * 255));
+                    fprintf(df, "%d\t%d\t%f\t%d\t%d\t%d\t%f\t%d\n", testStruct.nums, testStruct.iterations, camera.Position.z, testStruct.withPlane, testStruct.lightMoving, testStruct.canRefract, fps, int(sum * 255));
                 else
                     fprintf(df, "%d\t%d\t%f\t%f\t%d\n", testStruct.nums, testStruct.iterations, camera.Position.z, fps, int(sum * 255));
                 break;
@@ -589,7 +600,7 @@ run:
         goto run;
     }
     
-    if(testStruct.doDistanceTest && num_of_test + 1 < 7) {
+    if(testStruct.doDistanceTest && num_of_test + 1 < 8) {
         camera.Position.z = distances[++num_of_test];
         goto run;
     }
