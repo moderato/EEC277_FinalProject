@@ -28,7 +28,8 @@
 #define MAX_ITERATION_NUM    16
 #define INIT_SPHERE_NUM      125
 #define INIT_ITERATION_NUM   6
-#define INIT_DISTANCE        18.0f
+#define INIT_DISTANCE        14.0f
+#define PI                   3.14159
 
 // Define a struct storing test parameters
 typedef struct {
@@ -39,9 +40,11 @@ typedef struct {
     bool lightMoving;
     bool canRefract;
     bool turnOffRayCalculation;
+    
     bool doNumberTest;
     bool doIterationTest;
     bool doDistanceTest;
+    bool doStandardTest;
 } TestStruct;
 
 TestStruct testStruct;
@@ -65,7 +68,7 @@ glm::vec3 sp_pos[MAX_SPHERE_NUM];
 // Test parameter arrays
 const int numbers[] = {1, 8, 27, 64, 125, 216};
 const int iterations[] = {2, 4, 6, 8, 10, 12, 14, 16};
-const float distances[] = {18.0f, 20.0f, 22.0f, 24.0f, 26.0f, 28.0f};
+const float distances[] = {14.0f, 16.0f, 18.0f, 20.0f, 22.0f, 24.0f, 26.0f, 28.0f};
 
 const char usageString[] = {"\
 [-n]\tSet number of spheres\n \
@@ -74,9 +77,10 @@ const char usageString[] = {"\
 [-m]\tEnable light movement\n \
 [-r]\tEnable refraction calculation\n \
 [-o]\tTurn off ray rate calculation\n \
-+[-nt]\tDo number test \
-+[-it]\tDo iteration test \
-+[-dt]\tDo distance test\n\n"};
+[-nt]\tDo number test\n \
+[-it]\tDo iteration test\n \
+[-dt]\tDo distance test\n \
+[-st]\tDo standard test\n\n"};
 
 void usage(const char *progName)
 {
@@ -115,25 +119,32 @@ void parseArgs(int argc, char **argv, TestStruct *testStruct) {
         }
         else if (strcmp(argv[i],"-o") == 0) // Turn off ray calculation
         {
-            testStruct->turnOffRayCalculation = true;
+            if(!(testStruct->doIterationTest || testStruct->doDistanceTest || testStruct->doNumberTest || testStruct->doStandardTest))
+                testStruct->turnOffRayCalculation = true;
         }
         else if (strcmp(argv[i],"-nt") == 0) // Do number testing
         {
             // Do one test at a time
-            if(!testStruct->doIterationTest && !testStruct->doDistanceTest)
+            if(!testStruct->doIterationTest && !testStruct->doDistanceTest && !testStruct->doStandardTest)
                 testStruct->doNumberTest = true;
         }
         else if (strcmp(argv[i],"-it") == 0) // Do iteration testing
         {
             // Do one test at a time
-            if(!testStruct->doNumberTest && !testStruct->doDistanceTest)
+            if(!testStruct->doNumberTest && !testStruct->doDistanceTest && !testStruct->doStandardTest)
                 testStruct->doIterationTest = true;
         }
         else if (strcmp(argv[i],"-dt") == 0) // Do distance testing
         {
             // Do one test at a time
-            if(!testStruct->doNumberTest && !testStruct->doIterationTest)
+            if(!testStruct->doNumberTest && !testStruct->doIterationTest && !testStruct->doStandardTest)
                 testStruct->doDistanceTest = true;
+        }
+        else if (strcmp(argv[i],"-st") == 0) // Do standard testing
+        {
+            // Do one test at a time
+            if(!testStruct->doNumberTest && !testStruct->doIterationTest && !testStruct->doDistanceTest)
+                testStruct->doStandardTest = true;
         }
         else
         {
@@ -244,14 +255,6 @@ int main(int argc, char **argv)
     parseArgs(argc, argv, &testStruct);
     
     int num_of_test = 0;
-
-    if(testStruct.doNumberTest) {
-        testStruct.nums = numbers[num_of_test];
-    }
-    
-    if(testStruct.doIterationTest) {
-        testStruct.iterations = iterations[num_of_test];
-    }
     
     if(testStruct.nums > MAX_SPHERE_NUM) { // Check if sphere number exceeds limit
         fprintf(stderr, "Too many spheres!\n");
@@ -262,14 +265,32 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
     
-    // Initialize frame number and start time;
-    //int frames = 0;
-    //float start = glfwGetTime();
+    if(testStruct.doNumberTest) {
+        testStruct.nums = numbers[num_of_test];
+    }
+    
+    if(testStruct.doIterationTest) {
+        testStruct.iterations = iterations[num_of_test];
+    }
+    
+    // Standard Test:
+    // 125 Spheres
+    // 6 Iterations
+    // Camera distance 14
+    // Has plane
+    // Light moving
+    // Can Refract
+    // Calculate ray count
+    // Resolution 800*600
+    if(testStruct.doDistanceTest || testStruct.doIterationTest || testStruct.doNumberTest || testStruct.doStandardTest) {
+        testStruct.withPlane = true;
+        testStruct.lightMoving = true;
+        testStruct.canRefract = true;
+        testStruct.turnOffRayCalculation = false;
+    }
     
     // Array to store ray calculation count data
     GLfloat* rayRateArray = new GLfloat[WIDTH * MUL * HEIGHT * MUL];
-    
-    
     
     // Two arrays both containing two triangles to cover the whole window for the first pass and second pass, respectively
     GLfloat first_pass_quad[] = {
@@ -376,12 +397,39 @@ int main(int argc, char **argv)
     double lastTime = glfwGetTime();
     int nbFrames = 0;
     
+    
+    std::string filename = "";
+    if(testStruct.doNumberTest)
+        filename += "NumberTest.txt";
+    else if(testStruct.doIterationTest)
+        filename += "IterationTest.txt";
+    else if(testStruct.doDistanceTest)
+        filename += "DistanceTest.txt";
+    else if(testStruct.doStandardTest)
+        filename += "Standard.txt";
+    
+    FILE *df = nullptr;
+    if(testStruct.doNumberTest || testStruct.doStandardTest || testStruct.doDistanceTest || testStruct.doIterationTest)
+        df = fopen(filename.c_str(),"w");
+        if(testStruct.doStandardTest)
+            fprintf(df, "Spheres\tIterations\tDistance\tPlane\tLight Moving\tRefraction\tFrame Rate\tRay Calculation\n");
+        else
+            fprintf(df, "Spheres\tIterations\tDistance\tFrame Rate\tRay Calculation\n");
+    
 run:
     // Positions for each spheres
     int scale = int(cbrt(testStruct.nums));
-    for(int i = 0; i < MAX_SPHERE_NUM; i++) {
-        sp_pos[i] = glm::vec3(-3.0f + 1.5f * (i % scale), 0.5f + 1.5f * (i / (scale * scale)), 0.0f + 1.5f * ((i % (scale * scale)) / scale));
+    for(int i = 0; i < testStruct.nums; i++) {
+        sp_pos[i] = glm::vec3(-3.0f + 1.5f * (i % scale), 0.5f + 1.5f * (i / (scale * scale)), 0.0f - 1.5f * ((i % (scale * scale)) / scale));
     }
+    
+    std::cout << testStruct.nums << " Spheres" << std::endl;
+    std::cout << testStruct.iterations << " Iterations" << std::endl;
+    std::cout << "Camera Distance " << camera.Position.z << std::endl;
+    std::cout << "Has plane? " << (testStruct.withPlane ? "Yes" : "No") << std::endl;
+    std::cout << "Light moving? " << (testStruct.lightMoving ? "Yes" : "No") << std::endl;
+    std::cout << "Can refract? " << (testStruct.canRefract ? "Yes" : "No") << std::endl;
+    std::cout << "Ray calculation on? " << (testStruct.turnOffRayCalculation ? "No" : "Yes") << std::endl << std::endl;
     
     while (!glfwWindowShouldClose(window)) {
         GLfloat current = glfwGetTime();
@@ -391,6 +439,9 @@ run:
         // Clear the colorbuffer
         glfwPollEvents();
         do_movement();
+        
+        // Sum of ray calculation
+        float sum = 0;
         
         /******************** First pass. Render to two textures attached to FBO. ********************/
         // Bind self-created FBO
@@ -423,11 +474,11 @@ run:
         glUniform1i(glGetUniformLocation(firstPassShader.Program, "canRefract"), testStruct.canRefract);
         double xpos, ypos;
         glfwGetCursorPos(window, &xpos, &ypos);
-        glUniform4f(glGetUniformLocation(firstPassShader.Program, "cursor"), xpos, ypos, xpos, ypos);
+        glUniform2f(glGetUniformLocation(firstPassShader.Program, "cursor"), xpos, ypos);
 
         //Cursor rotation matrix calculate//1.3089 and 0.65 are mearsured number sutable for my machine
-        glm::vec2 mouse = (glm::vec2(xpos, ypos) / glm::vec2(WIDTH * MUL, HEIGHT * MUL) * glm::vec2(1.3089) - glm::vec2(0.65)) * glm::vec2(WIDTH * MUL / HEIGHT * MUL, 1.0) * glm::vec2(2.0);
-        glm::mat3 rot = glm::mat3(glm::vec3(sin(mouse.x + 3.14159/2.0), 0, sin(mouse.x)),glm::vec3(0, 1, 0),glm::vec3(sin(mouse.x + 3.14159), 0, sin(mouse.x + 3.14159/2.0)));
+        glm::vec2 mouse = (glm::vec2(xpos, ypos) / glm::vec2(WIDTH * MUL, HEIGHT * MUL) * glm::vec2(2.233) - glm::vec2(0.74)) * glm::vec2(WIDTH * MUL / (HEIGHT * MUL), 1.0) * glm::vec2(2.0);
+        glm::mat3 rot = glm::mat3(glm::vec3(sin(mouse.x + PI / 2.0), 0, sin(mouse.x)),glm::vec3(0, 1, 0),glm::vec3(sin(mouse.x + PI), 0, sin(mouse.x + PI / 2.0)));
         glUniformMatrix3fv(glGetUniformLocation(firstPassShader.Program, "rot"), 1, GL_FALSE, glm::value_ptr(rot));
 
         // Pass sphere array info to fragment shader
@@ -466,11 +517,11 @@ run:
             glBindTexture(GL_TEXTURE_2D, 0);
             
             // Sum up ray calculation count
-            float sum = 0;
             for(int i = 0; i < WIDTH * HEIGHT * MUL * MUL; i++) {
                 sum += rayRateArray[i];
             }
-            std::cout << int(sum * 255) << " ray calculations per frame"<< std::endl;
+            if(!testStruct.doStandardTest && !testStruct.doNumberTest && !testStruct.doDistanceTest && !testStruct.doIterationTest)
+                std::cout << int(sum * 255) << " ray calculations per frame"<< std::endl;
         }
         
         // Swap the screen buffers
@@ -479,15 +530,53 @@ run:
         // Calculate frame rates
         double currentTime = glfwGetTime();
         nbFrames++;
-        if ( currentTime - lastTime >= 5.0f ){ // If last prinf() was more than 1 sec ago
+        if (currentTime - lastTime >= 5.0f){ // If last prinf() was more than 1 sec ago
             // printf and reset timer
             float fps = nbFrames/(currentTime - lastTime);
-            std::cout << fps << " frames per second" << std::endl;
+
             nbFrames = 0;
             lastTime = currentTime;
-            if(testStruct.doDistanceTest || testStruct.doIterationTest || testStruct.doNumberTest)
+            
+            
+            if(testStruct.doDistanceTest || testStruct.doIterationTest || testStruct.doNumberTest || testStruct.doStandardTest) {
+                if(testStruct.doStandardTest)
+                    fprintf(df, "%d\t%d\t%f\t%s\t%s\t%s\t%f\t%d\n", testStruct.nums, testStruct.iterations, camera.Position.z, testStruct.withPlane ? "T" : "F", testStruct.lightMoving ? "T" : "F", testStruct.canRefract ? "T" : "F", fps, int(sum * 255));
+                else
+                    fprintf(df, "%d\t%d\t%f\t%f\t%d\n", testStruct.nums, testStruct.iterations, camera.Position.z, fps, int(sum * 255));
+                break;
+            } else {
+                std::cout << fps << " frames per second" << std::endl; // If not doing any test, print frame rate per 5 seconds
+            }
+        }
+    }
+    
+    if(testStruct.doStandardTest) {
+        switch(num_of_test++) {
+            case 0:
+                testStruct.withPlane = false; // Test without plane
+                break;
+            case 1:
+                testStruct.withPlane = true;
+                testStruct.lightMoving = false; // Test without moving light
+                break;
+            case 2:
+                testStruct.lightMoving = true;
+                testStruct.canRefract = false; // Test without refraction
+                break;
+            case 3:
+                testStruct.canRefract = true;
+                testStruct.turnOffRayCalculation = true; // Test without calculating ray counts
+                break;
+            case 4:
+                testStruct.withPlane = false;
+                testStruct.lightMoving = false;
+                testStruct.canRefract = false; // Disable all features
+                break;
+            default:
                 break;
         }
+        if(num_of_test <= 5)
+            goto run;
     }
     
     if(testStruct.doNumberTest && num_of_test + 1 < 6) {
@@ -500,10 +589,14 @@ run:
         goto run;
     }
     
-    if(testStruct.doDistanceTest && num_of_test + 1 < 5) {
+    if(testStruct.doDistanceTest && num_of_test + 1 < 7) {
         camera.Position.z = distances[++num_of_test];
         goto run;
     }
+    
+    // Close file
+    if(df)
+        fclose(df);
     
     // Delete all arrays and buffers and free pointers
     glDeleteVertexArrays(1, &first_pass_VAO);
@@ -519,4 +612,3 @@ run:
     glfwTerminate();
     return 0;
 }
-

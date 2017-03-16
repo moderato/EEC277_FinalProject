@@ -53,8 +53,7 @@ const float intensity = 100.0;
 const vec3 ambient = vec3(0.6, 0.8, 1.0) * intensity / gamma;
 const float MAX_LEN = 2147483647.0;
 const Intersect miss = Intersect(MAX_LEN, vec3(0.0), vec3(0.0), Material(vec3(0.0), vec3(0.0)));
-Light light = Light(vec3(1.0, 1.0, 1.0) * intensity, normalize(vec3(0.0, 1.0, -3.0))); // Fixed light
-//Light light = Light(vec3(1.0, 1.0, 1.0) * intensity, normalize(light_direction)); // Moving light
+Light light = Light(vec3(1.0, 1.0, 1.0) * intensity, normalize(light_direction)); // Light source, can be fixed or moving
 float rayCount = 0; // Ray calculation count for this pixel
 
 Intersect intersect(Ray ray, Sphere sphere) {
@@ -196,7 +195,7 @@ vec3 radiance(Ray ray) {
             
         } else { // not hit
             
-            vec3 spotlight = vec3(1e6) * pow(abs(dot(ray.direction, light.direction)), 150.0);
+            vec3 spotlight = vec3(1e6) * pow(abs(dot(ray.direction, light.direction)), 250.0);
             color += mask * (ambient + spotlight);   //addtion light 
             // we didn't add this light in the refraction because it would cause too many obvious artifact spots, due to the lack of anti-aliasing
             break;
