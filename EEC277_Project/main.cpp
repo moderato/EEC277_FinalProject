@@ -220,7 +220,7 @@ int main(int argc, char **argv)
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
     
     // Create a GLFWwindow object that we can use for GLFW's functions
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "LearnOpenGL", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Ray Tracing", nullptr, nullptr);
     if(!window) {
         fprintf(stderr, "Failed to create GLFW window.\n");
         glfwTerminate();

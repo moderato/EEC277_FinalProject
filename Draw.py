@@ -41,6 +41,7 @@ for name in files:
 
 		ax1.set_ylabel("Frame Rate")
 		ax2.set_ylabel("Ray Count")
+		ax1.set_xlabel("Distance")
 
 		ax1.set_xticklabels(x) 
 		plt.setp(ax1.xaxis.get_majorticklabels(), rotation=0)
@@ -75,6 +76,7 @@ for name in files:
 
 		ax1.set_ylabel("Frame Rate")
 		ax2.set_ylabel("Ray Count")
+		ax1.set_xlabel("Iterations")
 
 		ax1.set_xticklabels(x) 
 		plt.setp(ax1.xaxis.get_majorticklabels(), rotation=0)
@@ -89,7 +91,7 @@ for name in files:
 		y11 = df["Frame Rate"]
 		y22 = df["Ray Count"]
 	elif testname == "NumberTest_R":
-		x = df["Spheres"]
+		x = [1,2,3,4,5,6]
 		y1 = df["Frame Rate"]
 		y2 = df["Ray Count"]
 
@@ -108,6 +110,7 @@ for name in files:
 
 		ax1.set_ylabel("Frame Rate")
 		ax2.set_ylabel("Ray Count")
+		ax1.set_xlabel("Sphere Number on Each Edge")
 
 		ax1.set_xticklabels(x) 
 		plt.setp(ax1.xaxis.get_majorticklabels(), rotation=0)
