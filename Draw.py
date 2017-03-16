@@ -9,6 +9,7 @@ global y22
 
 directory = "./EEC277_Project"
 figs = "./Figs"
+GPU = "Intel Iris Graphics 6100"
 files = [join(directory, f) for f in listdir(directory) if f.endswith(".txt")]
 for name in files:
 	f = open(name, 'r')
@@ -45,7 +46,7 @@ for name in files:
 		ax1.legend(loc=1, prop={'size':12})
 		ax2.legend(loc=2, prop={'size':12})
 		plt.title("Distance Test")
-		plt.savefig(figs + "/Distance Test.png")
+		plt.savefig(figs + "/Distance Test " + GPU + " .png")
 		plt.show()
 
 	elif testname == "IterationTest":
@@ -76,7 +77,7 @@ for name in files:
 		ax1.legend(loc=1, prop={'size':12})
 		ax2.legend(loc=9, prop={'size':12})
 		plt.title("Iteration Test (Refraction VS No Refraction)")
-		plt.savefig(figs + "/Iteration Test (Refraction VS No Refraction).png")
+		plt.savefig(figs + "/Iteration Test (Refraction VS No Refraction) " + GPU + " .png")
 		plt.show()
 	elif testname == "NumberTest":
 		y11 = df["Frame Rate"]
@@ -106,7 +107,7 @@ for name in files:
 		ax1.legend(loc=1, prop={'size':12})
 		ax2.legend(loc=9, prop={'size':12})
 		plt.title("Number Test (Refraction VS No Refraction)")
-		plt.savefig(figs + "/Number Test (Refraction VS No Refraction).png")
+		plt.savefig(figs + "/Number Test (Refraction VS No Refraction) " + GPU + " .png")
 		plt.show()
 	elif testname == "Standard":
 		y11 = df["Frame Rate"]
@@ -136,5 +137,5 @@ for name in files:
 		ax1.legend(loc=1, prop={'size':12})
 		ax2.legend(loc=2, prop={'size':12})
 		plt.title("Standard Test (1 Sphere VS 125 Spheres)")
-		plt.savefig(figs + "/Standard Test (1 Sphere VS 125 Spheres).png")
+		plt.savefig(figs + "/Standard Test (1 Sphere VS 125 Spheres) " + GPU + " .png")
 		plt.show()
