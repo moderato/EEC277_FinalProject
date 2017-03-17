@@ -73,9 +73,9 @@ const float distances[] = {10.0f, 13.0f, 16.0f, 19.0f, 22.0f, 25.0f, 28.0f, 31.0
 const char usageString[] = {"\
 [-n]\tSet number of spheres\n \
 [-i]\tSet number of iterations\n \
-[-p]\tAdd a plane to the scene\n \
-[-m]\tEnable light movement\n \
-[-r]\tEnable refraction calculation\n \
+[-p]\tRemove a plane from the scene\n \
+[-m]\tDisable light movement\n \
+[-r]\tDisable refraction\n \
 [-o]\tTurn off ray rate calculation\n \
 [-nt]\tDo number test\n \
 [-it]\tDo iteration test\n \
@@ -105,17 +105,17 @@ void parseArgs(int argc, char **argv, TestStruct *testStruct) {
             argc--;
             testStruct->iterations = atoi(argv[i]);
         }
-        else if (strcmp(argv[i],"-p") == 0) // With plane
+        else if (strcmp(argv[i],"-p") == 0) // Without plane
         {
-            testStruct->withPlane = true;
+            testStruct->withPlane = false;
         }
-        else if (strcmp(argv[i],"-m") == 0) // Moving light
+        else if (strcmp(argv[i],"-m") == 0) // Fixed light
         {
-            testStruct->lightMoving = true;
+            testStruct->lightMoving = false;
         }
-        else if (strcmp(argv[i],"-r") == 0) // Use refraction
+        else if (strcmp(argv[i],"-r") == 0) // No refraction
         {
-            testStruct->canRefract = true;
+            testStruct->canRefract = false;
         }
         else if (strcmp(argv[i],"-o") == 0) // Turn off ray calculation
         {
@@ -244,9 +244,9 @@ int main(int argc, char **argv)
     // Initialize parameters and parse arguments
     testStruct.nums = INIT_SPHERE_NUM;
     testStruct.iterations = INIT_ITERATION_NUM;
-    testStruct.withPlane = false;
-    testStruct.lightMoving = false;
-    testStruct.canRefract = false;
+    testStruct.withPlane = true;
+    testStruct.lightMoving = true;
+    testStruct.canRefract = true;
     testStruct.turnOffRayCalculation = false;
     testStruct.doNumberTest = false;
     testStruct.doDistanceTest = false;
@@ -283,12 +283,12 @@ int main(int argc, char **argv)
     // Can Refract
     // Calculate ray count
     // Resolution 800*600
-    if(testStruct.doDistanceTest || testStruct.doIterationTest || testStruct.doNumberTest || testStruct.doStandardTest) {
-        testStruct.withPlane = true;
-        testStruct.lightMoving = true;
-        testStruct.canRefract = true;
-        testStruct.turnOffRayCalculation = false;
-    }
+    // if(testStruct.doDistanceTest || testStruct.doIterationTest || testStruct.doNumberTest || testStruct.doStandardTest) {
+    //     testStruct.withPlane = true;
+    //     testStruct.lightMoving = true;
+    //     testStruct.canRefract = true;
+    //     testStruct.turnOffRayCalculation = false;
+    // }
     
     // Array to store ray calculation count data
     GLfloat* rayRateArray = new GLfloat[WIDTH * MUL * HEIGHT * MUL];
@@ -400,19 +400,22 @@ int main(int argc, char **argv)
     
     std::string filename = "";
     if(testStruct.doNumberTest)
-        filename += "NumberTest.txt";
+        filename += "NumberTest";
     else if(testStruct.doIterationTest)
-        filename += "IterationTest.txt";
+        filename += "IterationTest";
     else if(testStruct.doDistanceTest)
-        filename += "DistanceTest.txt";
+        filename += "DistanceTest";
     else if(testStruct.doStandardTest)
-        filename += "Standard.txt";
-    
-    std::cout << "here" << std::endl;
+        filename += "Standard";
+
+    if(!testStruct.doNumberTest && testStruct.nums != INIT_SPHERE_NUM)
+        filename += "_" + std::to_string(testStruct.nums);
+    if(!testStruct.canRefract)
+        filename += "_NR";
+    filename += ".txt";
     
     FILE *df;
     if(testStruct.doNumberTest || testStruct.doStandardTest || testStruct.doDistanceTest || testStruct.doIterationTest) {
-        std::cout << "there" << std::endl;
         df = fopen(filename.c_str(),"w");
         if(testStruct.doStandardTest)
             fprintf(df, "Spheres\tIterations\tDistance\tPlane\tLight Moving\tRefraction\tFrame Rate\tRay Count\n");

@@ -56,7 +56,7 @@ for name in files:
 	elif testname == "IterationTest":
 		y11 = df["Frame Rate"]
 		y22 = df["Ray Count"]
-	elif testname == "IterationTest_R":
+	elif testname == "IterationTest_NR":
 		x = df["Iterations"]
 		y1 = df["Frame Rate"]
 		y2 = df["Ray Count"]
@@ -67,10 +67,10 @@ for name in files:
 
 		y1 = df["Frame Rate"]
 		y2 = df["Ray Count"]
-		frr = y11.plot(kind="bar", ax=ax1, width=0.15, position=1.5, color="#6688EE", label="Frame Rate (Refraction)")
-		fr = y1.plot(kind="bar", ax=ax1, width=0.15, position=2.5, color="#6688AA", label="Frame Rate (No Refraction)")
-		rcc = y22.plot(kind="bar", ax=ax2, width=0.15, position=-1.5, color="#EECC44", label="Ray Count (Refraction)")
-		rc = y2.plot(kind="bar", ax=ax2, width=0.15, position=-0.5, color="#AA8844", label="Ray Count (No Refraction)")
+		frr = y11.plot(kind="bar", ax=ax1, width=0.15, position=1.5, color="#6688EE", label="Frame Rate (No Refraction)")
+		fr = y1.plot(kind="bar", ax=ax1, width=0.15, position=2.5, color="#6688AA", label="Frame Rate (Refraction)")
+		rcc = y22.plot(kind="bar", ax=ax2, width=0.15, position=-1.5, color="#EECC44", label="Ray Count (No Refraction)")
+		rc = y2.plot(kind="bar", ax=ax2, width=0.15, position=-0.5, color="#AA8844", label="Ray Count (Refraction)")
 
 		plt.xlim(-1, 8)
 
@@ -90,7 +90,7 @@ for name in files:
 	elif testname == "NumberTest":
 		y11 = df["Frame Rate"]
 		y22 = df["Ray Count"]
-	elif testname == "NumberTest_R":
+	elif testname == "NumberTest_NR":
 		x = [1,2,3,4,5,6]
 		y1 = df["Frame Rate"]
 		y2 = df["Ray Count"]
@@ -101,10 +101,10 @@ for name in files:
 
 		y1 = df["Frame Rate"]
 		y2 = df["Ray Count"]
-		frr = y11.plot(kind="bar", ax=ax1, width=0.15, position=1.5, color="#6688EE", label="Frame Rate (Refraction)")
-		fr = y1.plot(kind="bar", ax=ax1, width=0.15, position=2.5, color="#6688AA", label="Frame Rate (No Refraction)")
-		rcc = y22.plot(kind="bar", ax=ax2, width=0.15, position=-1.5, color="#EECC44", label="Ray Count (Refraction)")
-		rc = y2.plot(kind="bar", ax=ax2, width=0.15, position=-0.5, color="#AA8844", label="Ray Count (No Refraction)")
+		frr = y11.plot(kind="bar", ax=ax1, width=0.15, position=1.5, color="#6688EE", label="Frame Rate (No Refraction)")
+		fr = y1.plot(kind="bar", ax=ax1, width=0.15, position=2.5, color="#6688AA", label="Frame Rate (Refraction)")
+		rcc = y22.plot(kind="bar", ax=ax2, width=0.15, position=-1.5, color="#EECC44", label="Ray Count (No Refraction)")
+		rc = y2.plot(kind="bar", ax=ax2, width=0.15, position=-0.5, color="#AA8844", label="Ray Count (Refraction)")
 
 		plt.xlim(-1, 6)
 
