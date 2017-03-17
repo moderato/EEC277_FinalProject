@@ -283,12 +283,6 @@ int main(int argc, char **argv)
     // Can Refract
     // Calculate ray count
     // Resolution 800*600
-    // if(testStruct.doDistanceTest || testStruct.doIterationTest || testStruct.doNumberTest || testStruct.doStandardTest) {
-    //     testStruct.withPlane = true;
-    //     testStruct.lightMoving = true;
-    //     testStruct.canRefract = true;
-    //     testStruct.turnOffRayCalculation = false;
-    // }
     
     // Array to store ray calculation count data
     GLfloat* rayRateArray = new GLfloat[WIDTH * MUL * HEIGHT * MUL];

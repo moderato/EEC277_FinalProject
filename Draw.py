@@ -9,7 +9,7 @@ global y22
 
 directory = "./EEC277_Project"
 figs = "./Figs"
-GPU = "Intel Iris Graphics 6100"
+GPU = "I"
 files = [join(directory, f) for f in listdir(directory) if f.endswith(".txt")]
 for name in files:
 	f = open(name, 'r')
